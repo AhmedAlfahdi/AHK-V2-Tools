@@ -1,0 +1,12 @@
+# AutoHotkey compiled scripts
+*.exe
+*.compiled
+
+# Windows system files
+desktop.ini
+Thumbs.db
+
+# Editor files
+.vscode/
+*.sublime-workspace
+*.sublime-project 

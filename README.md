@@ -40,7 +40,7 @@ This is an AutoHotkey v2 project that provides various automation features inclu
 - `src/AHK-Tools.ahk`: Main script file
 - `src/config.ahk`: Configuration settings
 - `src/lib/`: Library files
-  - `hotkeys.ahk`: Hotkey definitions
+  - `Txt-Replacment.ahk`: Add your text replacement rules
   - `functions.ahk`: Utility functions
 
 ## Usage

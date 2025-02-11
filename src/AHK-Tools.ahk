@@ -310,8 +310,8 @@ CheckEnvironment() {
 │ Win + Enter   │ Open Terminal as Administrator               │
 │ Win + F1      │ Show This Help Dialog                        │
 │ Win + F2      │ Toggle Numpad Mode (Row numbers 1-9,0)       │
-│ Win + F3      │ Wi-Fi Reconnect & Flush DNS                  │
-│ Win + F4      │ Toggle Hourly Chime                          │
+│ Win + F3      │ Wi-Fi Reconnect and Flush DNS                │
+│ Win + F4      │ Toggle Hourly Chime (Plays sound every hour) │
 │ Win + Q       │ Force Quit Active Application                │
 │ Win + X       │ System Power Options (Sleep/Shutdown/Logout) │
 ├───────────────┼──────────────────────────────────────────────┤

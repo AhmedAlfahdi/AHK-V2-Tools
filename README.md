@@ -21,6 +21,11 @@ This is an AutoHotkey v2 project that provides various automation features.
 - Keyboard shortcuts help (Win + F1)
     - Win + Del: Suspend/Resume Script
     - Win + Enter: Open Terminal as Administrator
+    - Win + F2: Toggle Numpad Mode (Row numbers 1-9,0)
+    - Win + F3: Wi-Fi Reconnect and Flush DNS
+    - Win + F4: Toggle Hourly Chime
+    - Win + Q: Force Quit Active Application
+    - Win + X: System Power Options (Sleep/Shutdown/Logout)
     - Alt + A: WolframAlpha Search
     - Alt + S: Perplexity Search
     - Alt + D: DuckDuckGo Search
@@ -28,7 +33,7 @@ This is an AutoHotkey v2 project that provides various automation features.
 
 ## Project Structure
 
-- `src/main.ahk`: Main script file
+- `src/AHK-Tools.ahk`: Main script file
 - `src/config.ahk`: Configuration settings
 - `src/lib/`: Library files
   - `hotkeys.ahk`: Hotkey definitions
@@ -36,7 +41,7 @@ This is an AutoHotkey v2 project that provides various automation features.
 
 ## Usage
 
-Run `src/main.ahk` or precompiled `main.exe` and press `win + F1` to see the help dialog.
+Run `src/AHK-Tools.ahk` or precompiled `AHK-Tools.exe` and press `win + F1` to see the help dialog.
 
 ## License
 

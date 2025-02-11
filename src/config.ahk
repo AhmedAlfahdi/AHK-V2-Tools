@@ -1,9 +1,9 @@
 ; Configuration variables
 global CONFIG := {
-    appName: "AHK Tools",
-    version: "1.0.0",
+    appName: "AHK Tools for power users",
+    version: "1.0.1",
     author: "Ahmed N. Alfahdi",
-    
+    GitHub: "https://github.com/ahmedalfahdi",
     ; Existing configurations
     tooltipDuration: 3000,    ; Duration in milliseconds for tooltips
     defaultSound: true,       ; Play sound on notifications

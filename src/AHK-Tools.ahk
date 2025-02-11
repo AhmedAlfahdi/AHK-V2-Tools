@@ -8,7 +8,7 @@ if (SubStr(A_AhkVersion, 1, 1) != "2") {
 
 ; Include configuration and libraries
 #Include "config.ahk"
-#Include "lib/hotkeys.ahk"
+#Include "lib/Txt-Replacment.ahk"
 #Include "lib/functions.ahk"
 
 ; Ensure single instance
@@ -206,6 +206,7 @@ SetupTrayMenu() {
     tray.Add("Settings", ShowSettings)
     tray.Add()  ; Separator
     tray.Add("Reload Script", ReloadScript)
+    tray.Add("About", ShowAbout)
     tray.Add("Exit", ExitScript)
 }
 
@@ -341,7 +342,7 @@ CheckEnvironment() {
     powerGui.Add("Button", "w100", "Sleep").OnEvent("Click", (*) => (powerGui.Destroy(), DllCall("PowrProf\SetSuspendState", "Int", 0, "Int", 0, "Int", 0)))
     powerGui.Add("Button", "w100", "Shutdown").OnEvent("Click", (*) => (powerGui.Destroy(), Shutdown(1)))
     powerGui.Add("Button", "w100", "Logout").OnEvent("Click", (*) => (powerGui.Destroy(), Shutdown(0)))
-    powerGui.Add("Button", "w100", "Cancel").OnEvent("Click", (*) => powerGui.Destroy())
+    powerGui.Add("Button", "w100", "Cancel (Esc)").OnEvent("Click", (*) => powerGui.Destroy())
     
     ; Add Esc key to close the GUI
     powerGui.OnEvent("Escape", (*) => powerGui.Destroy())

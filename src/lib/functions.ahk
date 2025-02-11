@@ -15,10 +15,11 @@ ShowSettings(*) {
 }
 
 ShowAbout(*) {
-    aboutText := Format("{1}`nVersion {2}`n`nCreated by: {3}", 
+    aboutText := Format("{1}`nVersion {2}`n`nCreated by: {3}`nGitHub: {4}", 
                        CONFIG.appName, 
                        CONFIG.version, 
-                       CONFIG.author)
+                       CONFIG.author,
+                       CONFIG.GitHub)
     MsgBox aboutText
 }
 

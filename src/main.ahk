@@ -204,7 +204,6 @@ InitializeScript() {
 SetupTrayMenu() {
     tray := A_TrayMenu
     tray.Add("Settings", ShowSettings)
-    tray.Add("About", ShowAbout)
     tray.Add()  ; Separator
     tray.Add("Reload Script", ReloadScript)
     tray.Add("Exit", ExitScript)
@@ -217,7 +216,8 @@ CheckEnvironment() {
     }
 }
 
-; Win + Enter to open Terminal as admin
+
+; Win + Enter to open Terminal as admin in the root directory
 #Enter::
 {
     Run "*RunAs wt.exe"  ; 'wt.exe' is the Windows Terminal executable
@@ -242,6 +242,57 @@ CheckEnvironment() {
 }
 #SuspendExempt false  ; End exempt section
 
+; Win + Home to disconnect/reconnect Wi-Fi and flush DNS
+#F3::
+{
+    ; Disable Wi-Fi
+    ToolTip "Disabling Wi-Fi..."
+    RunWait "netsh interface set interface name=`"Wi-Fi`" admin=disable",, "Hide"
+    Sleep 2000  ; Wait 2 seconds to ensure the interface is fully disabled
+    ToolTip "Wi-Fi disabled"
+    Sleep 1000  ; Show tooltip for 1 second
+
+    ; Enable Wi-Fi
+    ToolTip "Re-enabling Wi-Fi..."
+    RunWait "netsh interface set interface name=`"Wi-Fi`" admin=enable",, "Hide"
+    Sleep 2000  ; Wait 2 seconds to ensure the interface is fully enabled
+    ToolTip "Wi-Fi re-enabled"
+    Sleep 1000  ; Show tooltip for 1 second
+
+    ; Flush DNS cache
+    ToolTip "Flushing DNS cache..."
+    RunWait "ipconfig /flushdns",, "Hide"
+    ToolTip "DNS cache flushed"
+    Sleep 1000  ; Show tooltip for 1 second
+
+    ; Final confirmation
+    ToolTip "Wi-Fi reconnected and DNS flushed"
+    SetTimer () => ToolTip(), -2000  ; Hide tooltip after 2 seconds
+}
+
+; Win + Q to force quit active application
+#q::
+{
+    ; Get the active window's process ID
+    activePID := WinGetPID("A")  ; Correct syntax for getting PID
+    
+    ; Try to gracefully close the window first
+    PostMessage 0x0010, 0, 0,, "ahk_id " WinGetID("A")  ; Send WM_CLOSE message to active window
+    
+    ; Wait a moment to see if the window closes
+    Sleep 500
+    
+    ; If the window is still active, force terminate the process
+    if WinExist("ahk_pid " activePID) {
+        RunWait "taskkill /PID " activePID " /F",, "Hide"
+        ToolTip "Application was force quit" 
+    } else {
+        ToolTip "Application closed "
+    }
+    
+    SetTimer () => ToolTip(), -1500  ; Hide tooltip after 1.5 seconds
+}
+
 ; Win + F1 to show help dialog using a real table format with a monospaced font
 #F1::
 {
@@ -252,24 +303,88 @@ CheckEnvironment() {
     
     helpText := "
     (
-┌─────────────┬────────────────────────────────────────────┐
-│  Shortcut   │               Description                  │
-├─────────────┼────────────────────────────────────────────┤
-│ Win + Del   │ Suspend/Resume Script                      │
-│ Win + Enter │ Open Terminal as Administrator             │
-│ Win + F1    │ Show This Help Dialog                      │
-│ Win + F2    │ Toggle Numpad Mode (Row numbers 1-9,0)     │
-├─────────────┼────────────────────────────────────────────┤
-│ Alt + A     │ WolframAlpha Search                        │
-│ Alt + S     │ Perplexity Search                          │
-│ Alt + D     │ DuckDuckGo Search                          │
-│ Alt + F     │ Phind AI Search                            │
-└─────────────┴────────────────────────────────────────────┘
+┌───────────────┬──────────────────────────────────────────────┐
+│   Shortcut    │                Description                   │
+├───────────────┼──────────────────────────────────────────────┤
+│ Win + Del     │ Suspend/Resume Script                        │
+│ Win + Enter   │ Open Terminal as Administrator               │
+│ Win + F1      │ Show This Help Dialog                        │
+│ Win + F2      │ Toggle Numpad Mode (Row numbers 1-9,0)       │
+│ Win + F3      │ Wi-Fi Reconnect & Flush DNS                  │
+│ Win + F4      │ Toggle Hourly Chime                          │
+│ Win + Q       │ Force Quit Active Application                │
+│ Win + X       │ System Power Options (Sleep/Shutdown/Logout) │
+├───────────────┼──────────────────────────────────────────────┤
+│ Alt + A       │ WolframAlpha Search                          │
+│ Alt + S       │ Perplexity Search                            │
+│ Alt + D       │ DuckDuckGo Search                            │
+│ Alt + F       │ Phind AI Search                              │
+└───────────────┴──────────────────────────────────────────────┘
     )"
     
     MyGui.Add("Text",, helpText)
+    MyGui.Add("Link",, 'GitHub: <a href="https://github.com/ahmedalfahdi">https://github.com/ahmedalfahdi</a>')
     MyGui.Add("Button", "Default", "OK").OnEvent("Click", (*) => MyGui.Destroy())
-    MyGui.Title := "Keyboard Shortcuts Help"
     MyGui.Show()
 }
+
+; Win + X for system power options
+#x::
+{
+    ; Create the GUI
+    powerGui := Gui()
+    powerGui.Opt("+AlwaysOnTop")
+    powerGui.SetFont("s10", "Segoe UI")
+    powerGui.Add("Text",, "Select an option:")
+    
+    ; Add buttons for each option
+    powerGui.Add("Button", "w100", "Sleep").OnEvent("Click", (*) => (powerGui.Destroy(), DllCall("PowrProf\SetSuspendState", "Int", 0, "Int", 0, "Int", 0)))
+    powerGui.Add("Button", "w100", "Shutdown").OnEvent("Click", (*) => (powerGui.Destroy(), Shutdown(1)))
+    powerGui.Add("Button", "w100", "Logout").OnEvent("Click", (*) => (powerGui.Destroy(), Shutdown(0)))
+    powerGui.Add("Button", "w100", "Cancel").OnEvent("Click", (*) => powerGui.Destroy())
+    
+    ; Add Esc key to close the GUI
+    powerGui.OnEvent("Escape", (*) => powerGui.Destroy())
+    
+    ; Show the GUI
+    powerGui.Show()
+}
+
+; Win + F4 to toggle hourly chime
+#F4::
+{
+    static chimeActive := false
+    chimeActive := !chimeActive  ; Toggle state
+    
+    if (chimeActive) {
+        ToolTip "Hourly chime activated"
+        ; Start timer and play immediately
+        SetTimer PlayHourlyChime, 3600000  ; 3600000 ms = 1 hour
+        PlayHourlyChime()
+    } else {
+        ToolTip "Hourly chime deactivated"
+        SetTimer PlayHourlyChime, 0  ; Disable timer
+    }
+    
+    SetTimer () => ToolTip(), -2000  ; Hide tooltip after 2 seconds
+}
+
+PlayHourlyChime() {
+    ; Ensure the file exists
+    soundFile := "casio_hour_chime.mp3"
+    if !FileExist(soundFile) {
+        MsgBox "Error: " soundFile " not found in script directory"
+        return
+    }
+    
+    ; Play the sound
+    try {
+        SoundPlay soundFile
+    } catch as e {
+        MsgBox "Error playing sound: " e.Message
+    }
+}
+
+
+
 

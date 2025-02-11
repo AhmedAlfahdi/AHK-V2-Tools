@@ -1,6 +1,9 @@
 # AutoHotkey Project
 
-This is an AutoHotkey v2 project that provides various automation features.
+This is an AutoHotkey v2 project that provides various automation features including keyboard shortcuts, system power options, and more.
+
+
+**Contributions are welcome! Please feel free to submit a pull request or open an issue.**
 
 ## Requirements
 
@@ -11,7 +14,7 @@ This is an AutoHotkey v2 project that provides various automation features.
 ## Installation
 
 1. Ensure you have AutoHotkey v2 installed (v1.x will not work)
-2. Clone this repository
+2. Clone this repository or download zip file
 3. Run `src/main.ahk` as Administrator 
 
 ## Features
@@ -21,6 +24,7 @@ This is an AutoHotkey v2 project that provides various automation features.
 - Keyboard shortcuts help (Win + F1)
     - Win + Del: Suspend/Resume Script
     - Win + Enter: Open Terminal as Administrator
+    - Win + F1: Keyboard shortcuts help (This help dialog)
     - Win + F2: Toggle Numpad Mode (Row numbers 1-9,0)
     - Win + F3: Wi-Fi Reconnect and Flush DNS
     - Win + F4: Toggle Hourly Chime

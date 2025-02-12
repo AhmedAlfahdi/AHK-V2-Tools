@@ -351,6 +351,9 @@ CheckEnvironment() {
     powerGui.Show()
 }
 
+; Initialize script start time
+scriptStartTime := A_TickCount
+
 ; Win + F4 to toggle hourly chime
 #F4::
 {
@@ -371,6 +374,14 @@ CheckEnvironment() {
 }
 
 PlayHourlyChime() {
+    global scriptStartTime
+    
+    ; Calculate hours since script started
+    hoursPassed := ((A_TickCount - scriptStartTime) // 3600000)  ; Convert milliseconds to hours
+    
+    ; Show tooltip with hours passed
+    ToolTip "Hourly chime`nHours since activation: " hoursPassed
+    
     ; Ensure the file exists
     soundFile := "casio_hour_chime.mp3"
     if !FileExist(soundFile) {
@@ -384,6 +395,9 @@ PlayHourlyChime() {
     } catch as e {
         MsgBox "Error playing sound: " e.Message
     }
+    
+    ; Remove tooltip after 3 seconds
+    SetTimer () => ToolTip(), -3000
 }
 
 

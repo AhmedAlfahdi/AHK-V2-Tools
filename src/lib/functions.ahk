@@ -11,7 +11,57 @@ ShowTimeTooltip() {
 }
 
 ShowSettings(*) {
-    MsgBox "Settings dialog will be implemented here"
+    ; Create settings GUI
+    settingsGui := Gui("+AlwaysOnTop", "Script Settings")
+    settingsGui.SetFont("s10", "Segoe UI")
+    
+    ; Add startup setting
+    startupCheck := settingsGui.Add("CheckBox", "vRunAtStartup", "Run at Windows startup")
+    startupCheck.Value := IsStartupEnabled() ? 1 : 0
+    
+    ; Add save and close buttons
+    settingsGui.Add("Button", "Default w100", "Save").OnEvent("Click", (*) => SaveStartupSetting(startupCheck.Value, settingsGui))
+    settingsGui.Add("Button", "w100", "Close").OnEvent("Click", (*) => settingsGui.Destroy())
+    
+    settingsGui.Show()
+}
+
+SaveStartupSetting(enable, settingsGui) {
+    try {
+        if (enable) {
+            ; Add to startup without admin privileges
+            startupPath := A_Startup "\AHK-Tools.lnk"
+            if !FileExist(startupPath) {
+                ; Create shortcut
+                FileCreateShortcut A_ScriptFullPath, startupPath, A_ScriptDir
+            }
+        } else {
+            ; Remove from startup
+            startupPath := A_Startup "\AHK-Tools.lnk"
+            if FileExist(startupPath) {
+                FileDelete startupPath
+            }
+        }
+        
+        ; Create a custom message box positioned closer to center
+        msgGui := Gui("+AlwaysOnTop +ToolWindow", "Settings")
+        msgGui.SetFont("s10", "Segoe UI")
+        msgGui.Add("Text",, "Startup setting saved successfully!")
+        msgGui.Add("Button", "Default w100", "OK").OnEvent("Click", (*) => msgGui.Destroy())
+        
+        ; Position the GUI closer to center but slightly to the right
+        screenWidth := A_ScreenWidth
+        guiWidth := 300
+        xPos := (screenWidth - guiWidth) * 0.6  ; 60% from left (closer to center)
+        msgGui.Show("x" xPos " yCenter")
+    } catch as e {
+        MsgBox "Error saving startup setting: " e.Message, "Error", "Iconx"
+    }
+}
+
+IsStartupEnabled() {
+    ; Check if startup shortcut exists
+    return FileExist(A_Startup "\AHK-Tools.lnk")
 }
 
 ShowAbout(*) {
@@ -27,6 +77,28 @@ ReloadScript(*) {
     Reload
 }
 
+ReloadAsAdmin(*) {
+    try {
+        if !A_IsAdmin {
+            ; Relaunch as admin
+            Run '*RunAs "' A_ScriptFullPath '"'
+            ExitApp
+        } else {
+            ; Already admin, just reload
+            Reload
+        }
+    } catch as e {
+        MsgBox "Error reloading as admin: " e.Message, "Error", "Iconx"
+    }
+}
+
 ExitScript(*) {
     ExitApp
-} 
+}
+
+; Add tray menu items
+A_TrayMenu.Delete()  ; Clear default items
+A_TrayMenu.Add("Reload Script", ReloadScript)
+A_TrayMenu.Add("Reload as Admin", ReloadAsAdmin)
+A_TrayMenu.Add()  ; Separator
+A_TrayMenu.Add("Exit", ExitScript) 

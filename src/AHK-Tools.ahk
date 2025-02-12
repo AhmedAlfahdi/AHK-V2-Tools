@@ -213,7 +213,7 @@ SetupTrayMenu() {
 CheckEnvironment() {
     if (!A_IsAdmin) {
         ; Optional: Warn if not running as admin
-        MsgBox "Note: Some features may require admin rights.", "AutoHotkey v2", "Icon!"
+        MsgBox "Note: Some features may require admin rights. Right click on the tray icon to reload as admin.", "AutoHotkey v2", "Icon!"
     }
 }
 

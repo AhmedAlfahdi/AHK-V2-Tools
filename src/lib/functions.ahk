@@ -77,16 +77,30 @@ ReloadScript(*) {
     Reload
 }
 
-ReloadAsAdmin(*) {
+CheckAdminRequired() {
+    if !A_IsAdmin {
+        ; Create a warning GUI
+        adminGui := Gui("+AlwaysOnTop", "Admin Required")
+        adminGui.SetFont("s10", "Segoe UI")
+        adminGui.Add("Text",, "This feature requires administrator privileges.")
+        adminGui.Add("Text",, "Would you like to reload the script as admin?")
+        
+        ; Add buttons
+        adminGui.Add("Button", "Default w100", "Yes").OnEvent("Click", (*) => ReloadAsAdmin())
+        adminGui.Add("Button", "w100", "No").OnEvent("Click", (*) => adminGui.Destroy())
+        
+        ; Show the GUI
+        adminGui.Show()
+        return false
+    }
+    return true
+}
+
+ReloadAsAdmin() {
     try {
-        if !A_IsAdmin {
-            ; Relaunch as admin
-            Run '*RunAs "' A_ScriptFullPath '"'
-            ExitApp
-        } else {
-            ; Already admin, just reload
-            Reload
-        }
+        ; Relaunch as admin
+        Run '*RunAs "' A_ScriptFullPath '"'
+        ExitApp
     } catch as e {
         MsgBox "Error reloading as admin: " e.Message, "Error", "Iconx"
     }
@@ -98,7 +112,7 @@ ExitScript(*) {
 
 ; Add tray menu items
 A_TrayMenu.Delete()  ; Clear default items
-A_TrayMenu.Add("Reload Script", ReloadScript)
-A_TrayMenu.Add("Reload as Admin", ReloadAsAdmin)
+A_TrayMenu.Add("Reload Script", (*) => ReloadScript())
+A_TrayMenu.Add("Reload as Admin", (*) => ReloadAsAdmin())
 A_TrayMenu.Add()  ; Separator
-A_TrayMenu.Add("Exit", ExitScript) 
+A_TrayMenu.Add("Exit", (*) => ExitScript()) 

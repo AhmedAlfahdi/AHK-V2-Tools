@@ -246,6 +246,9 @@ CheckEnvironment() {
 ; Win + Home to disconnect/reconnect Wi-Fi and flush DNS
 #F3::
 {
+    if !CheckAdminRequired()
+        return
+    
     ; Disable Wi-Fi
     ToolTip "Disabling Wi-Fi..."
     RunWait "netsh interface set interface name=`"Wi-Fi`" admin=disable",, "Hide"

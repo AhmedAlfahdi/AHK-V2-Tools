@@ -20,7 +20,6 @@ This is an AutoHotkey v2 project that provides various automation features inclu
 ## Features
 
 - Calculator shortcut (Win + C)
-- Time display (Ctrl + Alt + T)
 - Keyboard shortcuts help (Win + F1)
     - Win + Del: Suspend/Resume Script
     - Win + Enter: Open Terminal as Administrator

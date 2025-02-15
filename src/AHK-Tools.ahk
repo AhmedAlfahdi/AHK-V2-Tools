@@ -403,6 +403,9 @@ PlayHourlyChime() {
     SetTimer () => ToolTip(), -3000
 }
 
+; Win + C to open calculator
+#c::Run "calc.exe"
+
 
 
 

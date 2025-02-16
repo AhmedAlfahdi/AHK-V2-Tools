@@ -449,24 +449,75 @@ PlayHourlyChime() {
 
 ; Function to determine file extension based on code context
 GetFileExtension(code) {
-    ; Check for Python keywords
-    if (InStr(code, "def ") || InStr(code, "import ") || InStr(code, "class ")) {
+    ; Check for Python
+    if (InStr(code, "def ") || InStr(code, "import ") || InStr(code, "class ") || InStr(code, "lambda ")) {
         return "py"
     }
-    ; Check for JavaScript keywords
-    if (InStr(code, "function ") || InStr(code, "const ") || InStr(code, "let ")) {
+    ; Check for JavaScript/TypeScript
+    if (InStr(code, "function ") || InStr(code, "const ") || InStr(code, "let ") || InStr(code, "export ")) {
         return "js"
     }
-    ; Check for HTML tags
-    if (InStr(code, "<html") || InStr(code, "<div") || InStr(code, "<p")) {
+    ; Check for HTML
+    if (InStr(code, "<html") || InStr(code, "<div") || InStr(code, "<p") || InStr(code, "<head")) {
         return "html"
     }
-    ; Check for CSS selectors
+    ; Check for CSS
     if (InStr(code, "{") && InStr(code, "}") && InStr(code, ":")) {
         return "css"
+    }
+    ; Check for C/C++
+    if (InStr(code, "#include ") || InStr(code, "int main(") || InStr(code, "std::")) {
+        return "cpp"
+    }
+    ; Check for Java
+    if (InStr(code, "public class ") || InStr(code, "System.out.println")) {
+        return "java"
+    }
+    ; Check for C#
+    if (InStr(code, "using ") || InStr(code, "namespace ") || InStr(code, "Console.WriteLine")) {
+        return "cs"
+    }
+    ; Check for PHP
+    if (InStr(code, "<?php") || InStr(code, "echo ") || InStr(code, "$")) {
+        return "php"
+    }
+    ; Check for Ruby
+    if (InStr(code, "def ") || InStr(code, "puts ") || InStr(code, "end")) {
+        return "rb"
+    }
+    ; Check for Go
+    if (InStr(code, "package ") || InStr(code, "func ") || InStr(code, "fmt.Println")) {
+        return "go"
+    }
+    ; Check for Rust
+    if (InStr(code, "fn ") || InStr(code, "println!") || InStr(code, "let ")) {
+        return "rs"
+    }
+    ; Check for Shell/Bash
+    if (InStr(code, "#!/bin/bash") || InStr(code, "echo ") || InStr(code, "$")) {
+        return "sh"
+    }
+    ; Check for PowerShell
+    if (InStr(code, "Write-Host ") || InStr(code, "$")) {
+        return "ps1"
+    }
+    ; Check for SQL
+    if (InStr(code, "SELECT ") || InStr(code, "FROM ") || InStr(code, "WHERE ")) {
+        return "sql"
+    }
+    ; Check for JSON
+    if (InStr(code, "{") && InStr(code, "}") && InStr(code, ":")) {
+        return "json"
+    }
+    ; Check for XML
+    if (InStr(code, "<") && InStr(code, ">") && InStr(code, "</")) {
+        return "xml"
+    }
+    ; Check for Markdown using a combination of syntax elements
+    if (InStr(code, "#") && (InStr(code, "*") || InStr(code, "_")) && (InStr(code, "[") && InStr(code, "]"))) {
+        return "md"
     }
     ; Default to .txt for unknown code
     return "txt"
 }
-
 

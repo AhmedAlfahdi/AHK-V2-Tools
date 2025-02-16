@@ -9,6 +9,7 @@ This is an AutoHotkey v2 project that provides various automation features inclu
 
 - **AutoHotkey v2.0 or later is strictly required**
 - This script will not work with AutoHotkey v1.x
+- You have to install Cursor AI to use the Alt + E shortcut (https://www.cursor.com/)
 - Download v2 from: https://www.autohotkey.com/v2/
 
 ## Installation
@@ -29,6 +30,7 @@ This is an AutoHotkey v2 project that provides various automation features inclu
     - Win + F4: Toggle Hourly Chime
     - Win + Q: Force Quit Active Application
     - Win + X: System Power Options (Sleep/Shutdown/Logout)
+    - Alt + E: Open selected text in Cursor AI Editor (you have to install Cursor AI) 
     - Alt + A: WolframAlpha Search
     - Alt + S: Perplexity Search
     - Alt + D: DuckDuckGo Search

@@ -116,3 +116,5 @@ A_TrayMenu.Add("Reload Script", (*) => ReloadScript())
 A_TrayMenu.Add("Reload as Admin", (*) => ReloadAsAdmin())
 A_TrayMenu.Add()  ; Separator
 A_TrayMenu.Add("Exit", (*) => ExitScript()) 
+
+

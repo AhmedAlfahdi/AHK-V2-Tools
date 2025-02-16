@@ -408,4 +408,65 @@ PlayHourlyChime() {
 
 
 
+; Alt + E to open selected text in Cursor AI Editor with proper file extension
+!e::
+{
+    ; Save the current clipboard content
+    savedClipboard := ClipboardAll()
+    A_Clipboard := ""  ; Clear clipboard
+    
+    ; Copy selected text to clipboard
+    Send "^c"
+    if !ClipWait(0.5) {  ; Wait up to 0.5 seconds for clipboard to update
+        MsgBox "Failed to copy text to clipboard.", "Error", "Iconx"
+        A_Clipboard := savedClipboard  ; Restore clipboard
+        return
+    }
+    
+    ; Open Cursor AI Editor with the selected text
+    try {
+        ; Determine file extension based on context
+        fileExtension := GetFileExtension(A_Clipboard)
+        
+        ; Create a temporary file with the selected text and proper extension
+        tempFile := A_Temp "\SelectedCode." fileExtension
+        FileAppend A_Clipboard, tempFile
+        
+        ; Use the full path to Cursor AI executable
+        cursorPath := "C:\Users\" A_UserName "\AppData\Local\Programs\Cursor\Cursor.exe"
+        Run cursorPath " " Chr(34) tempFile Chr(34)  ; Open the temporary file in Cursor AI
+        
+        ; Clean up the temporary file after a short delay
+        SetTimer () => FileDelete(tempFile), -5000  ; Delete after 5 seconds
+    } catch as e {
+        MsgBox "Failed to open Cursor AI: " e.Message, "Error", "Iconx"
+    }
+    
+    ; Restore the original clipboard content
+    A_Clipboard := savedClipboard
+    savedClipboard := ""  ; Free memory
+}
+
+; Function to determine file extension based on code context
+GetFileExtension(code) {
+    ; Check for Python keywords
+    if (InStr(code, "def ") || InStr(code, "import ") || InStr(code, "class ")) {
+        return "py"
+    }
+    ; Check for JavaScript keywords
+    if (InStr(code, "function ") || InStr(code, "const ") || InStr(code, "let ")) {
+        return "js"
+    }
+    ; Check for HTML tags
+    if (InStr(code, "<html") || InStr(code, "<div") || InStr(code, "<p")) {
+        return "html"
+    }
+    ; Check for CSS selectors
+    if (InStr(code, "{") && InStr(code, "}") && InStr(code, ":")) {
+        return "css"
+    }
+    ; Default to .txt for unknown code
+    return "txt"
+}
+
 

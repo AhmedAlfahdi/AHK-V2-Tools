@@ -357,7 +357,7 @@ CheckEnvironment() {
 ; Initialize script start time
 scriptStartTime := A_TickCount
 
-; Win + F4 to toggle hourly chime
+; Win + F4 to toggle hourly chime to keep track of time
 #F4::
 {
     static chimeActive := false
@@ -519,5 +519,45 @@ GetFileExtension(code) {
     }
     ; Default to .txt for unknown code
     return "txt"
+}
+
+; Alt + G to search selected text in SteamDB and other game databases
+!g::
+{
+    ; Save the current clipboard content
+    savedClipboard := ClipboardAll()
+    A_Clipboard := ""  ; Clear clipboard
+    
+    ; Copy selected text to clipboard
+    Send "^c"
+    if !ClipWait(0.5) {  ; Wait up to 0.5 seconds for clipboard to update
+        MsgBox "Failed to copy text to clipboard.", "Error", "Iconx"
+        A_Clipboard := savedClipboard  ; Restore clipboard
+        return
+    }
+    
+    ; Open SteamDB and other game databases with the selected text
+    try {
+        ; Encode the search term for URLs
+        searchTerm := UrlEncode(A_Clipboard)
+        
+        ; Open SteamDB
+        Run "https://steamdb.info/search/?a=app&q=" searchTerm
+        
+        ; Open PCGamingWiki
+        Run "https://www.pcgamingwiki.com/w/index.php?search=" searchTerm
+        
+        ; Open HowLongToBeat
+        Run "https://howlongtobeat.com/?q=" searchTerm
+        
+        ; Open CS.RIN.RU
+        Run "https://cs.rin.ru/forum/search.php?keywords=" searchTerm "&terms=any&author=&sc=1&sf=titleonly&sk=t&sd=d&sr=topics&st=0&ch=300&t=0&submit=Search"
+    } catch as e {
+        MsgBox "Failed to open game databases: " e.Message, "Error", "Iconx"
+    }
+    
+    ; Restore the original clipboard content
+    A_Clipboard := savedClipboard
+    savedClipboard := ""  ; Free memory
 }
 

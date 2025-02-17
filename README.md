@@ -35,6 +35,7 @@ This is an AutoHotkey v2 project that provides various automation features inclu
     - Alt + S: Perplexity Search
     - Alt + D: DuckDuckGo Search
     - Alt + F: Phind AI Search
+    - Alt + G: Search selected text in SteamDB and other game databases
 
 ## Project Structure
 

@@ -17,8 +17,23 @@ if (SubStr(A_AhkVersion, 1, 1) != "2") {
 ; Initialize the script
 InitializeScript()
 
-; Number row to numpad remapping
-#HotIf GetKeyState("NumLock", "T")  ; Only active when NumLock is ON
+; Toggle numpad functionality with Win+F2
+EnableNumpadToggle:=0
+#F2::
+{
+    if !GetKeyState("NumLock", "T") {
+        SetNumLockState "On"
+        ToolTip "Numpad Mode: ON"
+		global EnableNumpadToggle:=1
+    } else {
+        SetNumLockState "Off"
+        ToolTip "Numpad Mode: OFF"
+		global EnableNumpadToggle:=0
+    }
+    SetTimer () => ToolTip(), -1000  ; Hide tooltip after 1 second
+}
+
+#HotIf EnableNumpadToggle ; Only active when EnableNumpadToggle is True
 1::Numpad1
 2::Numpad2
 3::Numpad3
@@ -30,21 +45,6 @@ InitializeScript()
 9::Numpad9
 0::Numpad0
 #HotIf  ; End context sensitivity
-
-; Toggle numpad functionality with Win+F2
-#F2::
-{
-    static keyState := false
-    keyState := !keyState
-    if keyState {
-        SetNumLockState "On"
-        ToolTip "Numpad Mode: ON"
-    } else {
-        SetNumLockState "Off"
-        ToolTip "Numpad Mode: OFF"
-    }
-    SetTimer () => ToolTip(), -1000  ; Hide tooltip after 1 second
-}
 
 ; DuckDuckGo search hotkey
 !d::DuckDuckGoSearch()  ; Alt+D triggers the search
@@ -221,9 +221,13 @@ CheckEnvironment() {
 ; Win + Enter to open Terminal as admin in the root directory
 #Enter::
 {
-    Run "*RunAs wt.exe"  ; 'wt.exe' is the Windows Terminal executable
-    ; Alternative if you prefer PowerShell: Run "*RunAs powershell.exe"
-    ; Alternative if you prefer Command Prompt: Run "*RunAs cmd.exe"
+	try {
+		Run "*RunAs wt.exe"  ; 'wt.exe' is the Windows Terminal executable
+		; Alternative if you prefer PowerShell: Run "*RunAs powershell.exe"
+		; Alternative if you prefer Command Prompt: Run "*RunAs cmd.exe"
+	} catch as e {
+		MsgBox "Error opening Terminal as admin (maybe you pressed 'No' :)):`n" e.Message, "Error", "Iconx"
+	}
 }
 
 ; Win + Delete to suspend/resume the script

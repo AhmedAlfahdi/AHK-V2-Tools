@@ -320,13 +320,17 @@ CheckEnvironment() {
 │ Win + F2      │ Toggle Numpad Mode (Row numbers 1-9,0)       │
 │ Win + F3      │ Wi-Fi Reconnect and Flush DNS                │
 │ Win + F4      │ Toggle Hourly Chime (Plays sound every hour) │
+│ Win + C       │ Open Calculator                              │
 │ Win + Q       │ Force Quit Active Application                │
 │ Win + X       │ System Power Options (Sleep/Shutdown/Logout) │
 ├───────────────┼──────────────────────────────────────────────┤
 │ Alt + A       │ WolframAlpha Search                          │
-│ Alt + S       │ Perplexity Search                           │
 │ Alt + D       │ DuckDuckGo Search                           │
+│ Alt + E       │ Open Selected Text in Editor                 │
 │ Alt + F       │ Phind AI Search                             │
+│ Alt + G       │ Search in Game Databases                     │
+│ Alt + S       │ Perplexity Search                           │
+│ Alt + T       │ Search Selected Text in Torrent Engine       │
 │ Alt + W       │ Open Selected URL in Browser                 │
 └───────────────┴──────────────────────────────────────────────┘
     )"
@@ -420,9 +424,7 @@ PlayHourlyChime() {
 ; Win + C to open calculator
 #c::Run "calc.exe"
 
-
-
-; Alt + E to open selected text in Cursor AI Editor with proper file extension
+; Alt + E to open selected text in editor with language detection
 !e::
 {
     ; Save the current clipboard content
@@ -437,32 +439,40 @@ PlayHourlyChime() {
         return
     }
     
-    ; Open Cursor AI Editor with the selected text
+    ; Get the text from clipboard
+    code := A_Clipboard
+    
+    ; Count lines
+    lineCount := 0
+    Loop Parse code, "`n", "`r" {
+        lineCount++
+    }
+    
+    ; Detect programming language
+    language := DetectLanguage(code)
+    
+    ; Create temporary file with appropriate extension
+    tempFile := A_Temp "\SelectedCode." language
+    FileAppend code, tempFile
+    
+    ; Open in default editor
     try {
-        ; Determine file extension based on context
-        fileExtension := GetFileExtension(A_Clipboard)
-        
-        ; Create a temporary file with the selected text and proper extension
-        tempFile := A_Temp "\SelectedCode." fileExtension
-        FileAppend A_Clipboard, tempFile
-        
-        ; Use the full path to Cursor AI executable
-        cursorPath := "C:\Users\" A_UserName "\AppData\Local\Programs\Cursor\Cursor.exe"
-        Run cursorPath " " Chr(34) tempFile Chr(34)  ; Open the temporary file in Cursor AI
-        
-        ; Clean up the temporary file after a short delay
-        SetTimer () => FileDelete(tempFile), -5000  ; Delete after 5 seconds
+        Run tempFile
+        ToolTip "Opening " lineCount " lines of " language " code..."
     } catch as e {
-        MsgBox "Failed to open Cursor AI: " e.Message, "Error", "Iconx"
+        MsgBox "Failed to open editor: " e.Message, "Error", "Iconx"
     }
     
     ; Restore the original clipboard content
     A_Clipboard := savedClipboard
     savedClipboard := ""  ; Free memory
+    
+    ; Remove tooltip after 2 seconds
+    SetTimer () => ToolTip(), -2000
 }
 
-; Function to determine file extension based on code context
-GetFileExtension(code) {
+; Function to detect programming language from code
+DetectLanguage(code) {
     ; Check for Python
     if (InStr(code, "def ") || InStr(code, "import ") || InStr(code, "class ") || InStr(code, "lambda ")) {
         return "py"
@@ -527,7 +537,7 @@ GetFileExtension(code) {
     if (InStr(code, "<") && InStr(code, ">") && InStr(code, "</")) {
         return "xml"
     }
-    ; Check for Markdown using a combination of syntax elements
+    ; Check for Markdown
     if (InStr(code, "#") && (InStr(code, "*") || InStr(code, "_")) && (InStr(code, "[") && InStr(code, "]"))) {
         return "md"
     }
@@ -535,7 +545,7 @@ GetFileExtension(code) {
     return "txt"
 }
 
-; Alt + G to search selected text in SteamDB and other game databases
+; Alt + G to search selected text in game databases
 !g::
 {
     ; Save the current clipboard content
@@ -550,22 +560,24 @@ GetFileExtension(code) {
         return
     }
     
-    ; Open SteamDB and other game databases with the selected text
+    ; Open game databases with the selected text
     try {
         ; Encode the search term for URLs
         searchTerm := UrlEncode(A_Clipboard)
         
-        ; Open SteamDB
-        Run "https://steamdb.info/search/?a=app&q=" searchTerm
-        
         ; Open PCGamingWiki
         Run "https://www.pcgamingwiki.com/w/index.php?search=" searchTerm
         
-        ; Open HowLongToBeat
-        Run "https://howlongtobeat.com/?q=" searchTerm
-        
         ; Open CS.RIN.RU
         Run "https://cs.rin.ru/forum/search.php?keywords=" searchTerm "&terms=any&author=&sc=1&sf=titleonly&sk=t&sd=d&sr=topics&st=0&ch=300&t=0&submit=Search"
+        
+        ; Open preDB.net
+        Run "https://predb.net/?q=" searchTerm
+        
+        ; Open GOG-Games
+        Run "https://www.gog-games.to/search/" searchTerm
+        
+        ToolTip "Searching game databases..."
     } catch as e {
         MsgBox "Failed to open game databases: " e.Message, "Error", "Iconx"
     }
@@ -573,6 +585,9 @@ GetFileExtension(code) {
     ; Restore the original clipboard content
     A_Clipboard := savedClipboard
     savedClipboard := ""  ; Free memory
+    
+    ; Remove tooltip after 1.5 seconds
+    SetTimer () => ToolTip(), -1500
 }
 
 ; Alt + W to open selected URL in web browser
@@ -609,6 +624,41 @@ GetFileExtension(code) {
         }
     } else {
         MsgBox "Selected text doesn't appear to be a valid URL.", "Error", "Iconx"
+    }
+    
+    ; Restore the original clipboard content
+    A_Clipboard := savedClipboard
+    savedClipboard := ""  ; Free memory
+    
+    ; Remove tooltip after 1.5 seconds
+    SetTimer () => ToolTip(), -1500
+}
+
+; Alt + T to search selected text in torrent search engine
+!t::
+{
+    ; Save the current clipboard content
+    savedClipboard := ClipboardAll()
+    A_Clipboard := ""  ; Clear clipboard
+    
+    ; Copy selected text to clipboard
+    Send "^c"
+    if !ClipWait(0.5) {  ; Wait up to 0.5 seconds for clipboard to update
+        MsgBox "Failed to copy text to clipboard.", "Error", "Iconx"
+        A_Clipboard := savedClipboard  ; Restore clipboard
+        return
+    }
+    
+    ; Open torrent search engine with the selected text
+    try {
+        ; Encode the search term for URL
+        searchTerm := UrlEncode(A_Clipboard)
+        
+        ; Open the search engine with the text
+        Run "https://cse.google.com/cse?cx=006516753008110874046:0led5tukccj#gsc.tab=0&gsc.q=" searchTerm
+        ToolTip "Searching torrents..."
+    } catch as e {
+        MsgBox "Failed to open search engine: " e.Message, "Error", "Iconx"
     }
     
     ; Restore the original clipboard content

@@ -17,6 +17,7 @@ This is an AutoHotkey v2 project that provides various automation features inclu
 1. Ensure you have AutoHotkey v2 installed (v1.x will not work)
 2. Clone this repository or download zip file
 3. Run `src/main.ahk` as Administrator 
+4. Run `src/setup-startup.bat` as Administrator to setup the script to run on startup
 
 ## Features
 

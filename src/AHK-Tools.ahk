@@ -328,6 +328,7 @@ CheckEnvironment() {
 │ Alt + S       │ Perplexity Search                            │
 │ Alt + D       │ DuckDuckGo Search                            │
 │ Alt + F       │ Phind AI Search                              │
+│ Alt + W       │ Open Selected URL in Browser                 │
 └───────────────┴──────────────────────────────────────────────┘
     )"
     
@@ -347,10 +348,19 @@ CheckEnvironment() {
     powerGui.Add("Text",, "Select an option:")
     
     ; Add buttons for each option
-    powerGui.Add("Button", "w100", "Sleep").OnEvent("Click", (*) => (powerGui.Destroy(), DllCall("PowrProf\SetSuspendState", "Int", 0, "Int", 0, "Int", 0)))
-    powerGui.Add("Button", "w100", "Shutdown").OnEvent("Click", (*) => (powerGui.Destroy(), Shutdown(1)))
-    powerGui.Add("Button", "w100", "Logout").OnEvent("Click", (*) => (powerGui.Destroy(), Shutdown(0)))
-    powerGui.Add("Button", "w100", "Cancel (Esc)").OnEvent("Click", (*) => powerGui.Destroy())
+    btnSleep := powerGui.Add("Button", "w100", "Sleep")
+    btnSleep.OnEvent("Click", (*) => (powerGui.Destroy(), DllCall("PowrProf\SetSuspendState", "Int", 0, "Int", 0, "Int", 0)))
+    btnShutdown := powerGui.Add("Button", "w100", "Shutdown")
+    btnShutdown.OnEvent("Click", (*) => (powerGui.Destroy(), Shutdown(1)))
+    btnRestart := powerGui.Add("Button", "w100", "Restart")
+    btnRestart.OnEvent("Click", (*) => (powerGui.Destroy(), Shutdown(2)))
+    btnLogout := powerGui.Add("Button", "w100", "Logout")
+    btnLogout.OnEvent("Click", (*) => (powerGui.Destroy(), Shutdown(0)))
+    btnCancel := powerGui.Add("Button", "w100", "Cancel (Esc)")
+    btnCancel.OnEvent("Click", (*) => powerGui.Destroy())
+    
+    ; Make Sleep pre-selected (focused)
+    btnSleep.Focus()
     
     ; Add Esc key to close the GUI
     powerGui.OnEvent("Escape", (*) => powerGui.Destroy())
@@ -564,5 +574,49 @@ GetFileExtension(code) {
     ; Restore the original clipboard content
     A_Clipboard := savedClipboard
     savedClipboard := ""  ; Free memory
+}
+
+; Alt + W to open selected URL in web browser
+!w::
+{
+    ; Save the current clipboard content
+    savedClipboard := ClipboardAll()
+    A_Clipboard := ""  ; Clear clipboard
+    
+    ; Copy selected text to clipboard
+    Send "^c"
+    if !ClipWait(0.5) {  ; Wait up to 0.5 seconds for clipboard to update
+        MsgBox "Failed to copy text to clipboard.", "Error", "Iconx"
+        A_Clipboard := savedClipboard  ; Restore clipboard
+        return
+    }
+    
+    ; Get the URL from clipboard
+    url := A_Clipboard
+    
+    ; Check if the text looks like a URL
+    if (InStr(url, "http://") || InStr(url, "https://") || InStr(url, "www.")) {
+        ; If URL doesn't start with http:// or https://, add https://
+        if (!InStr(url, "http://") && !InStr(url, "https://")) {
+            url := "https://" url
+        }
+        
+        ; Open the URL in default browser
+        try {
+            Run url
+            ToolTip "Opening URL in browser..."
+        } catch as e {
+            MsgBox "Failed to open URL: " e.Message, "Error", "Iconx"
+        }
+    } else {
+        MsgBox "Selected text doesn't appear to be a valid URL.", "Error", "Iconx"
+    }
+    
+    ; Restore the original clipboard content
+    A_Clipboard := savedClipboard
+    savedClipboard := ""  ; Free memory
+    
+    ; Remove tooltip after 1.5 seconds
+    SetTimer () => ToolTip(), -1500
 }
 

@@ -320,14 +320,13 @@ CheckEnvironment() {
 │ Win + F2      │ Toggle Numpad Mode (Row numbers 1-9,0)       │
 │ Win + F3      │ Wi-Fi Reconnect and Flush DNS                │
 │ Win + F4      │ Toggle Hourly Chime (Plays sound every hour) │
-│ Win + F5      │ Switch Audio Output Device                   │
 │ Win + Q       │ Force Quit Active Application                │
 │ Win + X       │ System Power Options (Sleep/Shutdown/Logout) │
 ├───────────────┼──────────────────────────────────────────────┤
 │ Alt + A       │ WolframAlpha Search                          │
-│ Alt + S       │ Perplexity Search                            │
-│ Alt + D       │ DuckDuckGo Search                            │
-│ Alt + F       │ Phind AI Search                              │
+│ Alt + S       │ Perplexity Search                           │
+│ Alt + D       │ DuckDuckGo Search                           │
+│ Alt + F       │ Phind AI Search                             │
 │ Alt + W       │ Open Selected URL in Browser                 │
 └───────────────┴──────────────────────────────────────────────┘
     )"

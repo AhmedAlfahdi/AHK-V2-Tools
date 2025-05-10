@@ -15,7 +15,7 @@ global CONFIG := {
     autoSaveInterval: 60000,  ; Auto-save interval in milliseconds (e.g., for state or settings)
     runAtStartup: true,       ; Whether the script should launch on system startup
     defaultLanguage: "en",    ; Default language code for messages
-    opacity: 255              ; Window opacity (0 = fully transparent, 255 = fully opaque)
+    opacity: 230              ; Window opacity (0 = fully transparent, 255 = fully opaque)
 }
 
 LoadConfiguration() {

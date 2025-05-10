@@ -24,31 +24,35 @@ if (-not (Test-Path $cursorPath)) {
 # Create a scheduled task to run the AHK script on startup with admin privileges
 $taskName = "AHK-Tools"
 $taskDescription = "Runs AHK-Tools script on startup with admin privileges"
-$scriptPath = Join-Path $PSScriptRoot "AHK-Tools.exe"
+$scriptPath = Join-Path $PSScriptRoot "AHK-Tools.ahk"
 $workingDir = $PSScriptRoot
 
 # Check if the script exists
 if (-not (Test-Path $scriptPath)) {
-    Write-Error "AHK-Tools.exe not found in $workingDir"
+    Write-Error "AHK-Tools.ahk not found in $workingDir"
     Write-Host "`nPress any key to exit..."
     $null = $Host.UI.RawUI.ReadKey("NoEcho,IncludeKeyDown")
     exit
 }
 
-# Create the action to run the script
-$action = New-ScheduledTaskAction -Execute $scriptPath -WorkingDirectory $workingDir
+# Create the action to run the script with AutoHotkey
+$action = New-ScheduledTaskAction -Execute $ahkPath -Argument "`"$scriptPath`"" -WorkingDirectory $workingDir
 
 # Create the trigger for startup
 $trigger = New-ScheduledTaskTrigger -AtStartup
 
-# Set the principal to run with highest privileges
-$principal = New-ScheduledTaskPrincipal -UserId "SYSTEM" -LogonType ServiceAccount -RunLevel Highest
+# Set the principal to run with highest privileges for the current user
+$principal = New-ScheduledTaskPrincipal -UserId ([System.Security.Principal.WindowsIdentity]::GetCurrent().Name) -LogonType ServiceAccount -RunLevel Highest
 
 # Set the settings to run the task even if the user is not logged on
-$settings = New-ScheduledTaskSettingsSet -AllowStartIfOnBatteries -DontStopIfGoingOnBatteries -StartWhenAvailable -RunOnlyIfNetworkAvailable -Hidden
+$settings = New-ScheduledTaskSettingsSet -AllowStartIfOnBatteries -DontStopIfGoingOnBatteries -StartWhenAvailable -RunOnlyIfNetworkAvailable -Hidden -ExecutionTimeLimit 0
 
 # Register the scheduled task
 try {
+    # Remove existing task if it exists
+    Unregister-ScheduledTask -TaskName $taskName -Confirm:$false -ErrorAction SilentlyContinue
+    
+    # Register the new task
     Register-ScheduledTask -TaskName $taskName -Description $taskDescription -Action $action -Trigger $trigger -Principal $principal -Settings $settings -Force
     Write-Host "`n[✓] AHK-Tools has been successfully set up to run on startup with admin privileges." -ForegroundColor Green
     Write-Host "`n[!] The script will start automatically when you restart your computer." -ForegroundColor Yellow
@@ -64,7 +68,8 @@ $startupFolder = [System.Environment]::GetFolderPath('Startup')
 $shortcutPath = Join-Path $startupFolder "AHK-Tools.lnk"
 $WshShell = New-Object -ComObject WScript.Shell
 $Shortcut = $WshShell.CreateShortcut($shortcutPath)
-$Shortcut.TargetPath = $scriptPath
+$Shortcut.TargetPath = $ahkPath
+$Shortcut.Arguments = "`"$scriptPath`""
 $Shortcut.WorkingDirectory = $workingDir
 $Shortcut.WindowStyle = 7  # Minimized
 $Shortcut.Save()

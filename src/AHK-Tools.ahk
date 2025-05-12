@@ -6,6 +6,12 @@ if (SubStr(A_AhkVersion, 1, 1) != "2") {
     ExitApp
 }
 
+; Global variables
+global userSelection := 0
+global selectGui := 0
+global guiClosed := false
+global radioGroup := 0
+
 ; Include configuration and libraries
 #Include "config.ahk"
 #Include "lib/Txt-Replacment.ahk"
@@ -311,28 +317,29 @@ CheckEnvironment() {
     
     helpText := "
     (
-┌───────────────┬──────────────────────────────────────────────┐
-│   Shortcut    │                Description                   │
-├───────────────┼──────────────────────────────────────────────┤
-│ Win + Del     │ Suspend/Resume Script                        │
-│ Win + Enter   │ Open Terminal as Administrator               │
-│ Win + F1      │ Show This Help Dialog                        │
-│ Win + F2      │ Toggle Numpad Mode (Row numbers 1-9,0)       │
-│ Win + F3      │ Wi-Fi Reconnect and Flush DNS                │
-│ Win + F4      │ Toggle Hourly Chime (Plays sound every hour) │
-│ Win + C       │ Open Calculator                              │
-│ Win + Q       │ Force Quit Active Application                │
-│ Win + X       │ System Power Options (Sleep/Shutdown/Logout) │
-├───────────────┼──────────────────────────────────────────────┤
-│ Alt + A       │ WolframAlpha Search                          │
-│ Alt + D       │ DuckDuckGo Search                           │
-│ Alt + E       │ Open Selected Text in Editor                 │
-│ Alt + F       │ Phind AI Search                             │
-│ Alt + G       │ Search in Game Databases                     │
-│ Alt + S       │ Perplexity Search                           │
-│ Alt + T       │ Search Selected Text in Torrent Engine       │
-│ Alt + W       │ Open Selected URL in Browser                 │
-└───────────────┴──────────────────────────────────────────────┘
+┌───────────────┬───────────────────────────────────────────────┐
+│   Shortcut    │                Description                    │
+├───────────────┼───────────────────────────────────────────────┤
+│ Win + Del     │ Suspend/Resume Script                         │
+│ Win + Enter   │ Open Terminal as Administrator                │
+│ Win + F1      │ Show This Help Dialog                         │
+│ Win + F2      │ Toggle Numpad Mode (Row numbers 1-9,0)        │
+│ Win + F3      │ Wi-Fi Reconnect and Flush DNS                 │
+│ Win + F4      │ Toggle Hourly Chime (Plays sound every hour)  │
+│ Win + F12     │ Check Windows File Integrity                  │
+│ Win + C       │ Open Calculator                               │
+│ Win + Q       │ Force Quit Active Application                 │
+│ Win + X       │ System Power Options (Sleep/Shutdown/Logout)  │
+├───────────────┼───────────────────────────────────────────────┤
+│ Alt + A       │ WolframAlpha Search                           │
+│ Alt + D       │ DuckDuckGo Search                             │
+│ Alt + E       │ Open Selected Text in Editor                  │
+│ Alt + F       │ Phind AI Search                               │
+│ Alt + G       │ Search in Game Databases                      │
+│ Alt + S       │ Perplexity Search                             │
+│ Alt + T       │ Search Selected Text in Torrent Engine        │
+│ Alt + W       │ Open Selected URL in Browser                  │
+└───────────────┴───────────────────────────────────────────────┘
     )"
     
     MyGui.Add("Text",, helpText)
@@ -667,5 +674,53 @@ DetectLanguage(code) {
     
     ; Remove tooltip after 1.5 seconds
     SetTimer () => ToolTip(), -1500
+}
+
+; Win + F12 to check Windows file integrity
+#F12::
+{
+    if !CheckAdminRequired()
+        return
+    
+    ; Create simple selection dialog
+    selectGui := Gui()
+    selectGui.Opt("+AlwaysOnTop")
+    CheckType := 1 ; Ensure default selection is set
+    selectGui.Add("Text",, "Select Windows File Integrity Check Type:")
+    selectGui.Add("Text",, "Choose the type of check you want to perform:")
+    
+    selectGui.Add("Radio", "vCheckType Group checked", "Quick Check (DISM /ScanHealth)")
+    selectGui.Add("Radio",, "Full Check (DISM /CheckHealth)")
+    selectGui.Add("Radio",, "Repair Check (DISM /RestoreHealth)")
+    selectGui.Add("Radio",, "SFC Scan (sfc /scannow)")
+    selectGui.Add("Radio",, "Complete Check (DISM + SFC)")
+    
+    selectGui.Add("Button", "Default", "Start Check").OnEvent("Click", StartCheck)
+    selectGui.Add("Button",, "Cancel").OnEvent("Click", (*) => selectGui.Destroy())
+    
+    selectGui.Show()
+    
+    StartCheck(*) {
+        checkType := selectGui["CheckType"].Value
+        if (!checkType) ; fallback to default if not set
+            checkType := 1
+        selectGui.Destroy()
+        
+        if (checkType = 1) {
+            Run '*RunAs powershell.exe -NoExit -Command "DISM.exe /Online /Cleanup-Image /ScanHealth; Read-Host -Prompt \"Press Enter to close...\""'
+        }
+        else if (checkType = 2) {
+            Run '*RunAs powershell.exe -NoExit -Command "DISM.exe /Online /Cleanup-Image /CheckHealth; Read-Host -Prompt \"Press Enter to close...\""'
+        }
+        else if (checkType = 3) {
+            Run '*RunAs powershell.exe -NoExit -Command "DISM.exe /Online /Cleanup-Image /RestoreHealth; Read-Host -Prompt \"Press Enter to close...\""'
+        }
+        else if (checkType = 4) {
+            Run '*RunAs powershell.exe -NoExit -Command "sfc /scannow; Read-Host -Prompt \"Press Enter to close...\""'
+        }
+        else {
+            Run '*RunAs powershell.exe -NoExit -Command "DISM.exe /Online /Cleanup-Image /RestoreHealth; sfc /scannow; Read-Host -Prompt \"Press Enter to close...\""'
+        }
+    }
 }
 

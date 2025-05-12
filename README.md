@@ -1,6 +1,37 @@
 # AutoHotkey Project
 
-This is an AutoHotkey v2 project that provides various automation features including keyboard shortcuts, system power options, and more.
+AutoHotkey (AHK) is a powerful automation scripting language for Windows that allows you to automate repetitive tasks, create custom keyboard shortcuts, and enhance your workflow productivity. This project leverages AHK v2 to provide a collection of useful hotkeys and automation tools.
+
+
+## Why This Script?
+
+This AHK-Tools script provides a comprehensive set of productivity enhancements:
+
+1. **Quick Access Tools**
+   - Launch calculator, terminal, and system utilities with custom shortcuts
+   - Force quit applications and manage system power options easily
+   - Toggle useful features like numpad mode and hourly time tracking
+
+2. **Search Enhancement**
+   - Quickly search selected text across multiple platforms:
+     - AI assistants (Perplexity, Phind)
+     - Knowledge bases (WolframAlpha)
+     - Search engines (DuckDuckGo)
+     - Game databases
+     - Torrent search
+
+3. **System Management**
+   - Windows file integrity checking
+   - Wi-Fi management and DNS flushing
+   - Administrative task automation
+
+4. **Text Manipulation**
+   - Custom text replacement rules
+   - Quick text editing and manipulation
+   - Integration with Cursor AI editor
+
+This script is perfect for power users, developers, and anyone looking to streamline their Windows workflow with automated shortcuts and tools.
+
 
 
 **Contributions are welcome! Please feel free to submit a pull request or open an issue.**
@@ -46,9 +77,6 @@ This is an AutoHotkey v2 project that provides various automation features inclu
   - `Txt-Replacment.ahk`: Add your text replacement rules
   - `functions.ahk`: Utility functions
 
-## Usage
-
-Run `src/AHK-Tools.ahk` or precompiled `AHK-Tools.exe` and press `win + F1` to see the help dialog.
 
 ## License
 

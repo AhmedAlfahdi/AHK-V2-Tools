@@ -6,6 +6,10 @@ if (-NOT ([Security.Principal.WindowsPrincipal][Security.Principal.WindowsIdenti
     exit
 }
 
+# Get the absolute path of the script directory
+$scriptDir = Split-Path -Parent $MyInvocation.MyCommand.Path
+Write-Host "Script directory: $scriptDir"
+
 # Check if AutoHotkey v2 is installed
 $ahkPath = "C:\Program Files\AutoHotkey\v2\AutoHotkey.exe"
 if (-not (Test-Path $ahkPath)) {
@@ -14,6 +18,7 @@ if (-not (Test-Path $ahkPath)) {
     $null = $Host.UI.RawUI.ReadKey("NoEcho,IncludeKeyDown")
     exit
 }
+Write-Host "AutoHotkey found at: $ahkPath"
 
 # Check if Cursor is installed (required for Alt+E feature)
 $cursorPath = "${env:LOCALAPPDATA}\Programs\Cursor\Cursor.exe"
@@ -24,8 +29,11 @@ if (-not (Test-Path $cursorPath)) {
 # Create a scheduled task to run the AHK script on startup with admin privileges
 $taskName = "AHK-Tools"
 $taskDescription = "Runs AHK-Tools script on startup with admin privileges"
-$scriptPath = Join-Path $PSScriptRoot "AHK-Tools.ahk"
-$workingDir = $PSScriptRoot
+$scriptPath = Join-Path $scriptDir "AHK-Tools.ahk"
+$workingDir = $scriptDir
+
+Write-Host "AHK script path: $scriptPath"
+Write-Host "Working directory: $workingDir"
 
 # Check if the script exists
 if (-not (Test-Path $scriptPath)) {
@@ -38,19 +46,20 @@ if (-not (Test-Path $scriptPath)) {
 # Create the action to run the script with AutoHotkey
 $action = New-ScheduledTaskAction -Execute $ahkPath -Argument "`"$scriptPath`"" -WorkingDirectory $workingDir
 
-# Create the trigger for startup
-$trigger = New-ScheduledTaskTrigger -AtStartup
+# Create the trigger for startup - Change from AtStartup to AtLogon
+$trigger = New-ScheduledTaskTrigger -AtLogon
 
 # Set the principal to run with highest privileges for the current user
-$principal = New-ScheduledTaskPrincipal -UserId ([System.Security.Principal.WindowsIdentity]::GetCurrent().Name) -LogonType ServiceAccount -RunLevel Highest
+$principal = New-ScheduledTaskPrincipal -UserId ([System.Security.Principal.WindowsIdentity]::GetCurrent().Name) -LogonType Interactive -RunLevel Highest
 
-# Set the settings to run the task even if the user is not logged on
-$settings = New-ScheduledTaskSettingsSet -AllowStartIfOnBatteries -DontStopIfGoingOnBatteries -StartWhenAvailable -RunOnlyIfNetworkAvailable -Hidden -ExecutionTimeLimit 0
+# Set the settings to run the task only when the user is logged on
+$settings = New-ScheduledTaskSettingsSet -AllowStartIfOnBatteries -DontStopIfGoingOnBatteries -StartWhenAvailable -Hidden -ExecutionTimeLimit 0 -RunOnlyIfIdle:$false -MultipleInstances IgnoreNew
 
 # Register the scheduled task
 try {
     # Remove existing task if it exists
     Unregister-ScheduledTask -TaskName $taskName -Confirm:$false -ErrorAction SilentlyContinue
+    Write-Host "Removed existing task if present"
     
     # Register the new task
     Register-ScheduledTask -TaskName $taskName -Description $taskDescription -Action $action -Trigger $trigger -Principal $principal -Settings $settings -Force
@@ -74,7 +83,7 @@ $Shortcut.WorkingDirectory = $workingDir
 $Shortcut.WindowStyle = 7  # Minimized
 $Shortcut.Save()
 
-Write-Host "`n[✓] A backup shortcut has been created in your startup folder." -ForegroundColor Green
+Write-Host "`n[✓] A backup shortcut has been created in your startup folder at: $shortcutPath" -ForegroundColor Green
 Write-Host "`n[✓] Setup completed successfully!" -ForegroundColor Green
 Write-Host "`nPress any key to close this window..."
 $null = $Host.UI.RawUI.ReadKey("NoEcho,IncludeKeyDown") 

@@ -681,45 +681,69 @@ DetectLanguage(code) {
 {
     if !CheckAdminRequired()
         return
-    
-    ; Create simple selection dialog
+
     selectGui := Gui()
-    selectGui.Opt("+AlwaysOnTop")
-    CheckType := 1 ; Ensure default selection is set
-    selectGui.Add("Text",, "Select Windows File Integrity Check Type:")
-    selectGui.Add("Text",, "Choose the type of check you want to perform:")
-    
-    selectGui.Add("Radio", "vCheckType Group checked", "Quick Check (DISM /ScanHealth)")
-    selectGui.Add("Radio",, "Full Check (DISM /CheckHealth)")
-    selectGui.Add("Radio",, "Repair Check (DISM /RestoreHealth)")
-    selectGui.Add("Radio",, "SFC Scan (sfc /scannow)")
-    selectGui.Add("Radio",, "Complete Check (DISM + SFC)")
-    
-    selectGui.Add("Button", "Default", "Start Check").OnEvent("Click", StartCheck)
-    selectGui.Add("Button",, "Cancel").OnEvent("Click", (*) => selectGui.Destroy())
-    
+    selectGui.Opt("+AlwaysOnTop +ToolWindow")
+    selectGui.SetFont("s10", "Segoe UI")
+    selectGui.Title := "AHK-Tools.ahk"
+
+    selectGui.Add("Text", "w400", "Windows File Integrity Check")
+    selectGui.Add("Text", "w400", "Select the type of check to perform:")
+
+    ; Only the first radio in the group should have "Group"
+    selectGui.Add("Radio", "vCheckType Group checked", "Quick Check (DISM /ScanHealth) - Basic system file check")
+    selectGui.Add("Radio",, "Full Check (DISM /CheckHealth) - Detailed system file check")
+    selectGui.Add("Radio",, "Repair Check (DISM /RestoreHealth) - Attempt to repair system files")
+    selectGui.Add("Radio",, "SFC Scan (sfc /scannow) - System File Checker scan")
+    selectGui.Add("Radio",, "Complete Check (DISM + SFC) - Full repair and verification (recommended)")
+
+    btnStart := selectGui.Add("Button", "xm w100", "Start Check")
+    btnStart.OnEvent("Click", StartCheck)
+    btnCancel := selectGui.Add("Button", "x+10 w100", "Cancel")
+    btnCancel.OnEvent("Click", (*) => selectGui.Destroy())
+    selectGui.OnEvent("Escape", (*) => selectGui.Destroy())
     selectGui.Show()
-    
+
     StartCheck(*) {
-        checkType := selectGui["CheckType"].Value
-        if (!checkType) ; fallback to default if not set
-            checkType := 1
-        selectGui.Destroy()
-        
-        if (checkType = 1) {
-            Run '*RunAs powershell.exe -NoExit -Command "DISM.exe /Online /Cleanup-Image /ScanHealth; Read-Host -Prompt \"Press Enter to close...\""'
-        }
-        else if (checkType = 2) {
-            Run '*RunAs powershell.exe -NoExit -Command "DISM.exe /Online /Cleanup-Image /CheckHealth; Read-Host -Prompt \"Press Enter to close...\""'
-        }
-        else if (checkType = 3) {
-            Run '*RunAs powershell.exe -NoExit -Command "DISM.exe /Online /Cleanup-Image /RestoreHealth; Read-Host -Prompt \"Press Enter to close...\""'
-        }
-        else if (checkType = 4) {
-            Run '*RunAs powershell.exe -NoExit -Command "sfc /scannow; Read-Host -Prompt \"Press Enter to close...\""'
-        }
-        else {
-            Run '*RunAs powershell.exe -NoExit -Command "DISM.exe /Online /Cleanup-Image /RestoreHealth; sfc /scannow; Read-Host -Prompt \"Press Enter to close...\""'
+        try {
+            checkType := selectGui["CheckType"].Value
+            if (!checkType)
+                checkType := 1
+            selectGui.Destroy()
+
+            progressGui := Gui()
+            progressGui.Opt("+AlwaysOnTop +ToolWindow")
+            progressGui.SetFont("s10", "Segoe UI")
+            progressGui.Add("Text", "w400", "Running Windows File Integrity Check...")
+            progressGui.Add("Text", "w400", "This may take several minutes. Please wait.")
+            progressGui.Show()
+
+            command := ""
+            switch checkType {
+                case 1:
+                    command := "DISM.exe /Online /Cleanup-Image /ScanHealth"
+                case 2:
+                    command := "DISM.exe /Online /Cleanup-Image /CheckHealth"
+                case 3:
+                    command := "DISM.exe /Online /Cleanup-Image /RestoreHealth"
+                case 4:
+                    command := "sfc /scannow"
+                case 5:
+                    command := "DISM.exe /Online /Cleanup-Image /RestoreHealth & sfc /scannow"
+            }
+
+            try {
+                psCmd := '*RunAs powershell.exe -WindowStyle Normal -Command "Start-Process cmd -ArgumentList \"/k ' command '\" -Verb RunAs"'
+                Run(psCmd)
+            } catch as e {
+                MsgBox "Error running command: " e.Message, "Error", "Iconx"
+            }
+
+            progressGui.Destroy()
+            ToolTip "File integrity check completed"
+            SetTimer () => ToolTip(), -2000
+        } catch as e {
+            MsgBox "An error occurred: " e.Message, "Error", "Iconx"
         }
     }
 }

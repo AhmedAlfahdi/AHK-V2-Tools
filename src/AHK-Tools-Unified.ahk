@@ -6,22 +6,292 @@ if (SubStr(A_AhkVersion, 1, 1) != "2") {
     ExitApp
 }
 
-; Global variables
+; =================== CONFIGURATION SECTION ===================
+; Configuration variables (previously config.ahk)
+global CONFIG := {
+    appName: "AHK Tools for power users",
+    version: "1.0.1",
+    author: "Ahmed N. Alfahdi",
+    GitHub: "https://github.com/ahmedalfahdi",
+    ; Existing configurations
+    tooltipDuration: 3000,    ; Duration in milliseconds for tooltips
+    defaultSound: true,       ; Play sound on notifications
+    logFilePath: "C:\\Logs\\ahk_tools.log",  ; Path to the log file
+    maxRetries: 5,            ; Maximum number of retries for operations
+
+    ; Additional configurations
+    debugMode: false,         ; Enable detailed logging for debugging
+    autoSaveInterval: 60000,  ; Auto-save interval in milliseconds (e.g., for state or settings)
+    runAtStartup: true,       ; Whether the script should launch on system startup
+    defaultLanguage: "en",    ; Default language code for messages
+    opacity: 230              ; Window opacity (0 = fully transparent, 255 = fully opaque)
+}
+
+; =================== GLOBAL VARIABLES ===================
 global userSelection := 0
 global selectGui := 0
 global guiClosed := false
 global radioGroup := 0
 
-; Include configuration and libraries
-#Include "config.ahk"
-#Include "lib/Txt-Replacment.ahk"
-#Include "lib/functions.ahk"
+; =================== TEXT REPLACEMENT SECTION ===================
+; Text replacement hotstrings (previously Txt-Replacment.ahk)
+; Add your text replacements here using the format:
+; ::abbreviation::full text
 
+; Examples (uncomment and modify as needed):
+; ::btw::by the way
+; ::omg::oh my god
+; ::email::your.email@example.com
+; ::addr::Your full address here
+
+; =================== UTILITY FUNCTIONS SECTION ===================
+; Utility functions (previously functions.ahk)
+
+LoadConfiguration() {
+    ; Add any dynamic configuration loading or initialization logic here.
+    ; For example, you might override defaults based on external files or user preferences.
+    return
+}
+
+ShowTimeTooltip() {
+    if (SubStr(A_AhkVersion, 1, 1) != "2") {
+        MsgBox "Error: V2 required"
+        return
+    }
+    currentTime := FormatTime(, "yyyy-MM-dd HH:mm:ss")
+    ToolTip(currentTime)
+    SetTimer () => ToolTip(), -CONFIG.tooltipDuration
+}
+
+ShowSettings(*) {
+    ; Create settings GUI
+    settingsGui := Gui("+AlwaysOnTop", "Script Settings")
+    settingsGui.SetFont("s10", "Segoe UI")
+    
+    ; Add startup setting
+    startupCheck := settingsGui.Add("CheckBox", "vRunAtStartup", "Run at Windows startup")
+    startupCheck.Value := IsStartupEnabled() ? 1 : 0
+    
+    ; Add save and close buttons
+    settingsGui.Add("Button", "Default w100", "Save").OnEvent("Click", (*) => SaveStartupSetting(startupCheck.Value, settingsGui))
+    settingsGui.Add("Button", "w100", "Close").OnEvent("Click", (*) => settingsGui.Destroy())
+    
+    settingsGui.Show()
+}
+
+SaveStartupSetting(enable, settingsGui) {
+    try {
+        if (enable) {
+            ; Add to startup without admin privileges
+            startupPath := A_Startup "\AHK-Tools.lnk"
+            if !FileExist(startupPath) {
+                ; Create shortcut
+                FileCreateShortcut A_ScriptFullPath, startupPath, A_ScriptDir
+            }
+        } else {
+            ; Remove from startup
+            startupPath := A_Startup "\AHK-Tools.lnk"
+            if FileExist(startupPath) {
+                FileDelete startupPath
+            }
+        }
+        
+        ; Create a custom message box positioned closer to center
+        msgGui := Gui("+AlwaysOnTop +ToolWindow", "Settings")
+        msgGui.SetFont("s10", "Segoe UI")
+        msgGui.Add("Text",, "Startup setting saved successfully!")
+        msgGui.Add("Button", "Default w100", "OK").OnEvent("Click", (*) => msgGui.Destroy())
+        
+        ; Position the GUI closer to center but slightly to the right
+        screenWidth := A_ScreenWidth
+        guiWidth := 300
+        xPos := (screenWidth - guiWidth) * 0.6  ; 60% from left (closer to center)
+        msgGui.Show("x" xPos " yCenter")
+    } catch as e {
+        MsgBox "Error saving startup setting: " e.Message, "Error", "Iconx"
+    }
+}
+
+IsStartupEnabled() {
+    ; Check if startup shortcut exists
+    return FileExist(A_Startup "\AHK-Tools.lnk")
+}
+
+ShowAbout(*) {
+    aboutText := Format("{1}`nVersion {2}`n`nCreated by: {3}`nGitHub: {4}", 
+                       CONFIG.appName, 
+                       CONFIG.version, 
+                       CONFIG.author,
+                       CONFIG.GitHub)
+    MsgBox aboutText
+}
+
+ReloadScript(*) {
+    Reload
+}
+
+CheckAdminRequired() {
+    if !A_IsAdmin {
+        ; Create a warning GUI
+        adminGui := Gui("+AlwaysOnTop", "Admin Required")
+        adminGui.SetFont("s10", "Segoe UI")
+        adminGui.Add("Text",, "This feature requires administrator privileges.")
+        adminGui.Add("Text",, "Would you like to reload the script as admin?")
+        
+        ; Add buttons
+        adminGui.Add("Button", "Default w100", "Yes").OnEvent("Click", (*) => ReloadAsAdmin())
+        adminGui.Add("Button", "w100", "No").OnEvent("Click", (*) => adminGui.Destroy())
+        
+        ; Show the GUI
+        adminGui.Show()
+        return false
+    }
+    return true
+}
+
+ReloadAsAdmin() {
+    try {
+        ; Relaunch as admin
+        Run '*RunAs "' A_ScriptFullPath '"'
+        ExitApp
+    } catch as e {
+        MsgBox "Error reloading as admin: " e.Message, "Error", "Iconx"
+    }
+}
+
+ExitScript(*) {
+    ExitApp
+}
+
+; =================== SCRIPT INITIALIZATION ===================
 ; Ensure single instance
 #SingleInstance Force
 
 ; Initialize the script
 InitializeScript()
+
+InitializeScript() {
+    SetupTrayMenu()
+    LoadConfiguration()
+    CheckEnvironment()
+    
+    ; Show startup help message with 5-second timeout
+    MsgBox "Press Win + F1 anytime to see keyboard shortcuts", "Keyboard Shortcuts Available", "T5 64"  ; T5 for 5-second timeout, 64 for information icon
+}
+
+SetupTrayMenu() {
+    ; Clear default menu items and add custom ones
+    A_TrayMenu.Delete()  ; Clear default items
+    A_TrayMenu.Add("Settings", (*) => ShowSettings())
+    A_TrayMenu.Add()  ; Separator
+    A_TrayMenu.Add("Reload Script", (*) => ReloadScript())
+    A_TrayMenu.Add("Reload as Admin", (*) => ReloadAsAdmin())
+    A_TrayMenu.Add()  ; Separator
+    A_TrayMenu.Add("About", (*) => ShowAbout())
+    A_TrayMenu.Add("Exit", (*) => ExitScript())
+}
+
+CheckEnvironment() {
+    if (!A_IsAdmin) {
+        ; Optional: Warn if not running as admin
+        MsgBox "Note: Some features may require admin rights. Right click on the tray icon to reload as admin.", "AutoHotkey v2", "Icon!"
+    }
+}
+
+; =================== URL ENCODING UTILITY ===================
+UrlEncode(str) {
+    ; Basic URL encoding function
+    chars := Map(
+        " ", "%20", "!", "%21", "#", "%23", "$", "%24",
+        "&", "%26", "'", "%27", "(", "%28", ")", "%29",
+        "*", "%2A", "+", "%2B", ",", "%2C", "/", "%2F",
+        ":", "%3A", ";", "%3B", "=", "%3D", "?", "%3F",
+        "@", "%40", "[", "%5B", "]", "%5D"
+    )
+    
+    encoded := ""
+    loop parse str {
+        encoded .= chars.Has(A_LoopField) ? chars[A_LoopField] : A_LoopField
+    }
+    return encoded
+}
+
+; =================== LANGUAGE DETECTION UTILITY ===================
+; Function to detect programming language from code
+DetectLanguage(code) {
+    ; Check for Python
+    if (InStr(code, "def ") || InStr(code, "import ") || InStr(code, "class ") || InStr(code, "lambda ")) {
+        return "py"
+    }
+    ; Check for JavaScript/TypeScript
+    if (InStr(code, "function ") || InStr(code, "const ") || InStr(code, "let ") || InStr(code, "export ")) {
+        return "js"
+    }
+    ; Check for HTML
+    if (InStr(code, "<html") || InStr(code, "<div") || InStr(code, "<p") || InStr(code, "<head")) {
+        return "html"
+    }
+    ; Check for CSS
+    if (InStr(code, "{") && InStr(code, "}") && InStr(code, ":")) {
+        return "css"
+    }
+    ; Check for C/C++
+    if (InStr(code, "#include ") || InStr(code, "int main(") || InStr(code, "std::")) {
+        return "cpp"
+    }
+    ; Check for Java
+    if (InStr(code, "public class ") || InStr(code, "System.out.println")) {
+        return "java"
+    }
+    ; Check for C#
+    if (InStr(code, "using ") || InStr(code, "namespace ") || InStr(code, "Console.WriteLine")) {
+        return "cs"
+    }
+    ; Check for PHP
+    if (InStr(code, "<?php") || InStr(code, "echo ") || InStr(code, "$")) {
+        return "php"
+    }
+    ; Check for Ruby
+    if (InStr(code, "def ") || InStr(code, "puts ") || InStr(code, "end")) {
+        return "rb"
+    }
+    ; Check for Go
+    if (InStr(code, "package ") || InStr(code, "func ") || InStr(code, "fmt.Println")) {
+        return "go"
+    }
+    ; Check for Rust
+    if (InStr(code, "fn ") || InStr(code, "println!") || InStr(code, "let ")) {
+        return "rs"
+    }
+    ; Check for Shell/Bash
+    if (InStr(code, "#!/bin/bash") || InStr(code, "echo ") || InStr(code, "$")) {
+        return "sh"
+    }
+    ; Check for PowerShell
+    if (InStr(code, "Write-Host ") || InStr(code, "$")) {
+        return "ps1"
+    }
+    ; Check for SQL
+    if (InStr(code, "SELECT ") || InStr(code, "FROM ") || InStr(code, "WHERE ")) {
+        return "sql"
+    }
+    ; Check for JSON
+    if (InStr(code, "{") && InStr(code, "}") && InStr(code, ":")) {
+        return "json"
+    }
+    ; Check for XML
+    if (InStr(code, "<") && InStr(code, ">") && InStr(code, "</")) {
+        return "xml"
+    }
+    ; Check for Markdown
+    if (InStr(code, "#") && (InStr(code, "*") || InStr(code, "_")) && (InStr(code, "[") && InStr(code, "]"))) {
+        return "md"
+    }
+    ; Default to .txt for unknown code
+    return "txt"
+}
+
+; =================== HOTKEYS SECTION ===================
 
 ; Toggle numpad functionality with Win+F2
 EnableNumpadToggle:=0
@@ -82,23 +352,6 @@ DuckDuckGoSearch() {
     Run "https://duckduckgo.com/?q=" searchTerm
 }
 
-UrlEncode(str) {
-    ; Basic URL encoding function
-    chars := Map(
-        " ", "%20", "!", "%21", "#", "%23", "$", "%24",
-        "&", "%26", "'", "%27", "(", "%28", ")", "%29",
-        "*", "%2A", "+", "%2B", ",", "%2C", "/", "%2F",
-        ":", "%3A", ";", "%3B", "=", "%3D", "?", "%3F",
-        "@", "%40", "[", "%5B", "]", "%5D"
-    )
-    
-    encoded := ""
-    loop parse str {
-        encoded .= chars.Has(A_LoopField) ? chars[A_LoopField] : A_LoopField
-    }
-    return encoded
-}
-
 ; Perplexity search hotkey
 !s::PerplexitySearch()  ; Alt+S triggers the search
 
@@ -127,41 +380,6 @@ PerplexitySearch() {
     ; Encode the search term and launch browser
     searchTerm := UrlEncode(searchTerm)
     Run "https://www.perplexity.ai/search?q=" searchTerm
-}
-
-
-; Phind AI search hotkey
-!f::PhindSearch()  ; Alt+F triggers the search
-
-PhindSearch() {
-    ; Get selected text or prompt user for search term
-    searchTerm := ""
-    if (A_PriorHotkey = A_ThisHotkey && A_TimeSincePriorHotkey < 400)
-        return  ; Avoid accidental double-triggers
-    
-    ; Try to get selected text first
-    savedClip := ClipboardAll()  ; Save current clipboard
-    A_Clipboard := ""  ; Clear clipboard
-    Send "^c"  ; Copy selected text
-    if ClipWait(0.5) {  ; Wait for clipboard data
-        searchTerm := A_Clipboard
-    }
-    A_Clipboard := savedClip  ; Restore original clipboard
-    
-    ; If no text was selected, prompt user
-    if (searchTerm = "") {
-        searchTerm := InputBox("Enter search term:", "Phind AI Search").Value
-        if (searchTerm = "")  ; User cancelled
-            return
-    }
-    
-    ; Encode the search term and launch browser
-    searchTerm := UrlEncode(searchTerm)
-    Run "https://www.phind.com/search?q=" searchTerm
-    
-    ; Show confirmation tooltip
-    ToolTip "Searching with Phind AI..."
-    SetTimer () => ToolTip(), -1000  ; Hide tooltip after 1 second
 }
 
 ; WolframAlpha search hotkey
@@ -197,32 +415,6 @@ WolframSearch() {
     ToolTip "Searching with WolframAlpha..."
     SetTimer () => ToolTip(), -1000  ; Hide tooltip after 1 second
 }
-
-InitializeScript() {
-    SetupTrayMenu()
-    LoadConfiguration()
-    CheckEnvironment()
-    
-    ; Show startup help message with 5-second timeout
-    MsgBox "Press Win + F1 anytime to see keyboard shortcuts", "Keyboard Shortcuts Available", "T5 64"  ; T5 for 5-second timeout, 64 for information icon
-}
-
-SetupTrayMenu() {
-    tray := A_TrayMenu
-    tray.Add("Settings", ShowSettings)
-    tray.Add()  ; Separator
-    tray.Add("Reload Script", ReloadScript)
-    tray.Add("About", ShowAbout)
-    tray.Add("Exit", ExitScript)
-}
-
-CheckEnvironment() {
-    if (!A_IsAdmin) {
-        ; Optional: Warn if not running as admin
-        MsgBox "Note: Some features may require admin rights. Right click on the tray icon to reload as admin.", "AutoHotkey v2", "Icon!"
-    }
-}
-
 
 ; Win + Enter to open Terminal as admin in the root directory
 #Enter::
@@ -334,7 +526,7 @@ CheckEnvironment() {
 │ Alt + A       │ WolframAlpha Search                           │
 │ Alt + D       │ DuckDuckGo Search                             │
 │ Alt + E       │ Open Selected Text in Editor                  │
-│ Alt + F       │ Phind AI Search                               │
+│ Alt + F       │ DeepSeek AI Search                            │
 │ Alt + G       │ Search in Game Databases                      │
 │ Alt + S       │ Perplexity Search                             │
 │ Alt + T       │ Search Selected Text in Torrent Engine        │
@@ -476,80 +668,6 @@ PlayHourlyChime() {
     
     ; Remove tooltip after 2 seconds
     SetTimer () => ToolTip(), -2000
-}
-
-; Function to detect programming language from code
-DetectLanguage(code) {
-    ; Check for Python
-    if (InStr(code, "def ") || InStr(code, "import ") || InStr(code, "class ") || InStr(code, "lambda ")) {
-        return "py"
-    }
-    ; Check for JavaScript/TypeScript
-    if (InStr(code, "function ") || InStr(code, "const ") || InStr(code, "let ") || InStr(code, "export ")) {
-        return "js"
-    }
-    ; Check for HTML
-    if (InStr(code, "<html") || InStr(code, "<div") || InStr(code, "<p") || InStr(code, "<head")) {
-        return "html"
-    }
-    ; Check for CSS
-    if (InStr(code, "{") && InStr(code, "}") && InStr(code, ":")) {
-        return "css"
-    }
-    ; Check for C/C++
-    if (InStr(code, "#include ") || InStr(code, "int main(") || InStr(code, "std::")) {
-        return "cpp"
-    }
-    ; Check for Java
-    if (InStr(code, "public class ") || InStr(code, "System.out.println")) {
-        return "java"
-    }
-    ; Check for C#
-    if (InStr(code, "using ") || InStr(code, "namespace ") || InStr(code, "Console.WriteLine")) {
-        return "cs"
-    }
-    ; Check for PHP
-    if (InStr(code, "<?php") || InStr(code, "echo ") || InStr(code, "$")) {
-        return "php"
-    }
-    ; Check for Ruby
-    if (InStr(code, "def ") || InStr(code, "puts ") || InStr(code, "end")) {
-        return "rb"
-    }
-    ; Check for Go
-    if (InStr(code, "package ") || InStr(code, "func ") || InStr(code, "fmt.Println")) {
-        return "go"
-    }
-    ; Check for Rust
-    if (InStr(code, "fn ") || InStr(code, "println!") || InStr(code, "let ")) {
-        return "rs"
-    }
-    ; Check for Shell/Bash
-    if (InStr(code, "#!/bin/bash") || InStr(code, "echo ") || InStr(code, "$")) {
-        return "sh"
-    }
-    ; Check for PowerShell
-    if (InStr(code, "Write-Host ") || InStr(code, "$")) {
-        return "ps1"
-    }
-    ; Check for SQL
-    if (InStr(code, "SELECT ") || InStr(code, "FROM ") || InStr(code, "WHERE ")) {
-        return "sql"
-    }
-    ; Check for JSON
-    if (InStr(code, "{") && InStr(code, "}") && InStr(code, ":")) {
-        return "json"
-    }
-    ; Check for XML
-    if (InStr(code, "<") && InStr(code, ">") && InStr(code, "</")) {
-        return "xml"
-    }
-    ; Check for Markdown
-    if (InStr(code, "#") && (InStr(code, "*") || InStr(code, "_")) && (InStr(code, "[") && InStr(code, "]"))) {
-        return "md"
-    }
-    ; Default to .txt for unknown code
-    return "txt"
 }
 
 ; Alt + G to search selected text in game databases
@@ -746,5 +864,4 @@ DetectLanguage(code) {
             MsgBox "An error occurred: " e.Message, "Error", "Iconx"
         }
     }
-}
-
+} 

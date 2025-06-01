@@ -178,8 +178,8 @@ InitializeScript() {
     LoadConfiguration()
     CheckEnvironment()
     
-    ; Show startup help message with 5-second timeout
-    MsgBox "Press Win + F1 anytime to see keyboard shortcuts", "Keyboard Shortcuts Available", "T5 64"  ; T5 for 5-second timeout, 64 for information icon
+    ; Show startup help message with 1-second timeout
+    MsgBox "Press Win + F1 anytime to see keyboard shortcuts", "Keyboard Shortcuts Available", "T1 64"  ; T1 for 1-second timeout, 64 for information icon
 }
 
 SetupTrayMenu() {
@@ -877,23 +877,177 @@ PlayHourlyChime() {
 ; Win + Y for currency converter with GUI and dropdowns
 !c::
 {
+    ; Try to get selected text first
+    selectedText := ""
+    savedClip := ClipboardAll()
+    A_Clipboard := ""
+    Send "^c"
+    if ClipWait(0.3) {
+        selectedText := Trim(A_Clipboard)
+    }
+    A_Clipboard := savedClip
+    
+    ; Parse selected text for amount and currency
+    parsedAmount := ""
+    parsedCurrency := ""
+    
+    if selectedText {
+        ; Currency symbol mappings
+        currencyMap := Map(
+            "$", "USD",
+            "€", "EUR", 
+            "£", "GBP",
+            "¥", "JPY",
+            "₹", "INR",
+            "₩", "KRW",
+            "¢", "USD",  ; cents
+            "₽", "RUB",
+            "₨", "PKR",
+            "﷼", "OMR",
+            "₪", "ILS",  ; Israeli Shekel
+            "₦", "NGN",  ; Nigerian Naira
+            "₡", "CRC",  ; Costa Rican Colón
+            "₵", "GHS",  ; Ghanaian Cedi
+            "₸", "KZT",  ; Kazakhstani Tenge
+            "₴", "UAH",  ; Ukrainian Hryvnia
+            "₱", "PHP",  ; Philippine Peso
+            "₲", "PYG",  ; Paraguayan Guaraní
+            "₫", "VND",  ; Vietnamese Dong
+            "₭", "LAK",  ; Lao Kip
+            "₯", "GRD",  ; Greek Drachma (historical)
+            "₰", "PF",   ; German Pfennig (historical)
+            "₳", "ARA",  ; Argentine Austral (historical)
+            "₼", "AZN",  ; Azerbaijani Manat
+            "₾", "GEL",  ; Georgian Lari
+            "₿", "BTC",  ; Bitcoin
+            "＄", "USD", ; Full-width dollar sign
+            "￠", "USD", ; Full-width cent sign
+            "￡", "GBP", ; Full-width pound sign
+            "￥", "JPY", ; Full-width yen sign
+            "￦", "KRW", ; Full-width won sign
+            "﹩", "USD", ; Small dollar sign
+            "＃", "USD", ; Number sign (sometimes used for USD)
+            "₨", "INR",  ; Generic Rupee (could be multiple countries)
+            "R", "ZAR",  ; South African Rand
+            "R$", "BRL", ; Brazilian Real
+            "kr", "SEK", ; Swedish Krona (also NOK, DKK)
+            "zł", "PLN", ; Polish Złoty
+            "₺", "TRY", ; Turkish Lira
+            "₼", "AZN", ; Azerbaijani Manat
+            "֏", "AMD", ; Armenian Dram
+            "₶", "LVL", ; Latvian Lats (historical)
+            "₷", "SPL", ; Seborgan Luigino
+            "₹", "INR", ; Indian Rupee
+            "₻", "CET", ; Ceti
+            "₽", "RUB", ; Russian Ruble
+            "₾", "GEL", ; Georgian Lari
+            "₿", "BTC", ; Bitcoin
+            "﷼", "SAR", ; Saudi Riyal (also used for other Gulf currencies)
+            "₦", "NGN", ; Nigerian Naira
+            "₡", "CRC", ; Costa Rican Colón
+            "₹", "LKR", ; Sri Lankan Rupee
+            "₨", "NPR", ; Nepalese Rupee
+            "₹", "BTN", ; Bhutanese Ngultrum
+            "₹", "MVR"  ; Maldivian Rufiyaa
+        )
+        
+        ; Try different patterns to extract amount and currency
+        ; Pattern 1: Single character symbols before amount: $45.50, €100, ₹500
+        if RegExMatch(selectedText, "([€$£¥₹₩¢₽₨﷼₪₦₡₵₸₴₱₲₫₭₯₰₳₼₾₿＄￠￡￥￦﹩＃֏₶₷₻₺])(\d+(?:\.\d+)?)", &match) {
+            symbol := match[1]
+            parsedAmount := match[2]
+            if currencyMap.Has(symbol)
+                parsedCurrency := currencyMap[symbol]
+        }
+        ; Pattern 2: Multi-character symbols before amount: R$100, kr500
+        else if RegExMatch(selectedText, "(R\$|kr|zł)\s*(\d+(?:\.\d+)?)", &match) {
+            symbol := match[1]
+            parsedAmount := match[2]
+            if currencyMap.Has(symbol)
+                parsedCurrency := currencyMap[symbol]
+        }
+        ; Pattern 3: Single character symbols after amount: 45.50$, 100€
+        else if RegExMatch(selectedText, "(\d+(?:\.\d+)?)([€$£¥₹₩¢₽₨﷼₪₦₡₵₸₴₱₲₫₭₯₰₳₼₾₿＄￠￡￥￦﹩＃֏₶₷₻₺])", &match) {
+            parsedAmount := match[1]
+            symbol := match[2]
+            if currencyMap.Has(symbol)
+                parsedCurrency := currencyMap[symbol]
+        }
+        ; Pattern 4: Multi-character symbols after amount: 100R$, 500kr, 250zł
+        else if RegExMatch(selectedText, "(\d+(?:\.\d+)?)\s*(R\$|kr|zł)", &match) {
+            parsedAmount := match[1]
+            symbol := match[2]
+            if currencyMap.Has(symbol)
+                parsedCurrency := currencyMap[symbol]
+        }
+        ; Pattern 5: Just a number (no currency symbol)
+        else if RegExMatch(selectedText, "^\d+(?:\.\d+)?$") {
+            parsedAmount := selectedText
+        }
+        ; Pattern 6: Currency codes like "USD 100" or "100 USD"
+        else if RegExMatch(selectedText, "([A-Z]{3})\s*(\d+(?:\.\d+)?)", &match) {
+            parsedCurrency := match[1]
+            parsedAmount := match[2]
+        }
+        else if RegExMatch(selectedText, "(\d+(?:\.\d+)?)\s*([A-Z]{3})", &match) {
+            parsedAmount := match[1]
+            parsedCurrency := match[2]
+        }
+    }
+    
     ; Create GUI
     global currencyGui := Gui("+AlwaysOnTop", "Currency Converter")
     currencyGui.SetFont("s10", "Segoe UI")
     
-    ; Common currencies list
-    currencies := ["USD", "EUR", "GBP", "JPY", "AUD", "CAD", "CHF", "CNY", "SEK", "NZD", "MXN", "SGD", "HKD", "NOK", "TRY", "ZAR", "BRL", "INR", "KRW", "PLN", "OMR"]
+    ; Common currencies list - expanded with more world currencies
+    currencies := [
+        "AED", "AFN", "ALL", "AMD", "ANG", "AOA", "ARS", "AUD", "AWG", "AZN",
+        "BAM", "BBD", "BDT", "BGN", "BHD", "BIF", "BMD", "BND", "BOB", "BRL", "BSD", "BTN", "BWP", "BYN", "BZD",
+        "CAD", "CDF", "CHF", "CLP", "CNY", "COP", "CRC", "CUC", "CUP", "CVE", "CZK",
+        "DJF", "DKK", "DOP", "DZD",
+        "EGP", "ERN", "ETB", "EUR",
+        "FJD", "FKP",
+        "GBP", "GEL", "GHS", "GIP", "GMD", "GNF", "GTQ", "GYD",
+        "HKD", "HNL", "HRK", "HTG", "HUF",
+        "IDR", "ILS", "INR", "IQD", "IRR", "ISK",
+        "JMD", "JOD", "JPY",
+        "KES", "KGS", "KHR", "KMF", "KPW", "KRW", "KWD", "KYD", "KZT",
+        "LAK", "LBP", "LKR", "LRD", "LSL", "LYD",
+        "MAD", "MDL", "MGA", "MKD", "MMK", "MNT", "MOP", "MRU", "MUR", "MVR", "MWK", "MXN", "MYR", "MZN",
+        "NAD", "NGN", "NIO", "NOK", "NPR", "NZD",
+        "OMR",
+        "PAB", "PEN", "PGK", "PHP", "PKR", "PLN", "PYG",
+        "QAR",
+        "RON", "RSD", "RUB", "RWF",
+        "SAR", "SBD", "SCR", "SDG", "SEK", "SGD", "SHP", "SLE", "SLL", "SOS", "SRD", "STN", "SYP", "SZL",
+        "THB", "TJS", "TMT", "TND", "TOP", "TRY", "TTD", "TWD", "TZS",
+        "UAH", "UGX", "USD", "UYU", "UZS",
+        "VED", "VES", "VND", "VUV",
+        "WST",
+        "XAF", "XCD", "XDR", "XOF", "XPF",
+        "YER",
+        "ZAR", "ZMW", "ZWL"
+    ]
     
     ; Amount input
     currencyGui.Add("Text", "x10 y10", "Amount:")
     global amountEdit := currencyGui.Add("Edit", "x10 y30 w150")
     amountEdit.OnEvent("Change", (*) => AutoConvert())
     
+    ; Pre-fill amount if detected
+    if parsedAmount
+        amountEdit.Text := parsedAmount
+    
     ; From currency dropdown
     currencyGui.Add("Text", "x10 y65", "From Currency:")
     global fromCombo := currencyGui.Add("ComboBox", "x10 y85 w150", currencies)
-    fromCombo.Text := "USD"  ; Default selection
     fromCombo.OnEvent("Change", (*) => AutoConvert())
+    
+    ; Set detected currency or default to USD
+    if parsedCurrency && HasValue(currencies, parsedCurrency)
+        fromCombo.Text := parsedCurrency
+    else
+        fromCombo.Text := "USD"
     
     ; To currency dropdown
     currencyGui.Add("Text", "x10 y120", "To Currency:")
@@ -904,7 +1058,12 @@ PlayHourlyChime() {
     ; Result display - Main conversion result
     global resultText := currencyGui.Add("Edit", "x10 y180 w300 h35 ReadOnly")
     resultText.SetFont("s12 Bold", "Segoe UI")  ; Larger, bold font for the result
-    resultText.Text := "Enter amount and select currencies"
+    if parsedAmount && parsedCurrency
+        resultText.Text := "Auto-detected: " parsedAmount " " parsedCurrency
+    else if parsedAmount
+        resultText.Text := "Auto-detected amount: " parsedAmount
+    else
+        resultText.Text := "Enter amount and select currencies"
     
     ; Timestamp display - Smaller font
     global timestampText := currencyGui.Add("Edit", "x10 y220 w300 h25 ReadOnly")
@@ -912,15 +1071,29 @@ PlayHourlyChime() {
     timestampText.Text := "for automatic conversion"
     
     ; Buttons
-    closeBtn := currencyGui.Add("Button", "x10 y250 w100 h30", "Close")
+    closeBtn := currencyGui.Add("Button", "x10 y255 w100 h30", "Close")
     closeBtn.OnEvent("Click", (*) => currencyGui.Destroy())
     
-    swapBtn := currencyGui.Add("Button", "x120 y250 w100 h30", "Swap")
+    swapBtn := currencyGui.Add("Button", "x120 y255 w100 h30", "Swap")
     swapBtn.OnEvent("Click", (*) => SwapCurrencies())
     
     ; Show GUI
-    currencyGui.Show("w320 h295")
+    currencyGui.Show("w320 h300")
     amountEdit.Focus()
+    
+    ; Auto-convert if we have both amount and currency
+    if parsedAmount && parsedCurrency {
+        SetTimer () => AutoConvert(), -100  ; Small delay to ensure GUI is ready
+    }
+}
+
+; Helper function to check if value exists in array
+HasValue(arr, value) {
+    for item in arr {
+        if (item = value)
+            return true
+    }
+    return false
 }
 
 ; Function to swap from/to currencies
@@ -1125,7 +1298,6 @@ DoConversion() {
             } else {
                 try FileDelete(tempOutput)
                 
-                ; If we can't create files, skip Python and go straight to fallback
                 ; Fallback: Simple hardcoded converter for common currencies
                 rates := Map(
                     "USD_OMR", 0.385,
@@ -1150,9 +1322,30 @@ DoConversion() {
             }
             
         } catch as e {
-            resultText.Text := "Error in currency conversion: " e.Message
-            timestampText.Text := ""
+            ; If we can't create files, skip Python and go straight to fallback
+            ; Fallback: Simple hardcoded converter for common currencies
+            rates := Map(
+                "USD_OMR", 0.385,
+                "OMR_USD", 2.597,
+                "USD_EUR", 0.85,
+                "EUR_USD", 1.176,
+                "USD_GBP", 0.73,
+                "GBP_USD", 1.37
+            )
+            
+            rateKey := fromCur "_" toCur
+            if rates.Has(rateKey) {
+                rate := rates[rateKey]
+                result := amount * rate
+                currentTime := FormatTime(, "yyyy-MM-dd HH:mm:ss")
+                resultText.Text := amount " " fromCur " = " Round(result, 4) " " toCur
+                timestampText.Text := "Fallback rate used: " currentTime
+            } else {
+                resultText.Text := "Currency pair not supported"
+                timestampText.Text := "Supported: USD⟷OMR, USD⟷EUR, USD⟷GBP"
+            }
         }
+        
     } catch as e {
         resultText.Text := "Error in currency conversion: " e.Message
         timestampText.Text := ""

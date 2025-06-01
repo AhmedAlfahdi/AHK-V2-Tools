@@ -24,7 +24,7 @@ global CONFIG := {
     autoSaveInterval: 60000,  ; Auto-save interval in milliseconds (e.g., for state or settings)
     runAtStartup: true,       ; Whether the script should launch on system startup
     defaultLanguage: "en",    ; Default language code for messages
-    opacity: 230              ; Window opacity (0 = fully transparent, 255 = fully opaque)
+    opacity: 230             ; Window opacity (0 = fully transparent, 255 = fully opaque)
 }
 
 ; =================== GLOBAL VARIABLES ===================
@@ -56,6 +56,32 @@ LoadConfiguration() {
     return
 }
 
+; Theme management functions
+ApplyThemeToGui(gui) {
+    try {
+        ; Soft light gray background - much easier on the eyes than blazing white
+        gui.BackColor := 0xF5F5F5  ; Soft light gray instead of harsh white
+        gui.SetFont("s9", "Segoe UI")
+        
+        ; Apply consistent modern styling
+        for control in gui {
+            switch control.Type {
+                case "Text":
+                    control.SetFont("s9", "Segoe UI")
+                case "Edit":
+                    control.SetFont("s9", "Segoe UI")
+                case "Button":
+                    control.SetFont("s9", "Segoe UI")
+                case "ComboBox", "DropDownList":
+                    control.SetFont("s9", "Segoe UI")
+            }
+        }
+        
+    } catch as e {
+        ; Fallback: just use system defaults
+    }
+}
+
 ShowTimeTooltip() {
     if (SubStr(A_AhkVersion, 1, 1) != "2") {
         MsgBox "Error: V2 required"
@@ -66,67 +92,74 @@ ShowTimeTooltip() {
     SetTimer () => ToolTip(), -CONFIG.tooltipDuration
 }
 
-ShowSettings(*) {
-    ; Create settings GUI
-    settingsGui := Gui("+AlwaysOnTop", "Script Settings")
-    settingsGui.SetFont("s10", "Segoe UI")
-    
-    ; Add startup setting
-    startupCheck := settingsGui.Add("CheckBox", "vRunAtStartup", "Run at Windows startup")
-    startupCheck.Value := IsStartupEnabled() ? 1 : 0
-    
-    ; Add save and close buttons
-    settingsGui.Add("Button", "Default w100", "Save").OnEvent("Click", (*) => SaveStartupSetting(startupCheck.Value, settingsGui))
-    settingsGui.Add("Button", "w100", "Close").OnEvent("Click", (*) => settingsGui.Destroy())
-    
-    settingsGui.Show()
-}
-
-SaveStartupSetting(enable, settingsGui) {
-    try {
-        if (enable) {
-            ; Add to startup without admin privileges
-            startupPath := A_Startup "\AHK-Tools.lnk"
-            if !FileExist(startupPath) {
-                ; Create shortcut
-                FileCreateShortcut A_ScriptFullPath, startupPath, A_ScriptDir
-            }
-        } else {
-            ; Remove from startup
-            startupPath := A_Startup "\AHK-Tools.lnk"
-            if FileExist(startupPath) {
-                FileDelete startupPath
-            }
-        }
-        
-        ; Create a custom message box positioned closer to center
-        msgGui := Gui("+AlwaysOnTop +ToolWindow", "Settings")
-        msgGui.SetFont("s10", "Segoe UI")
-        msgGui.Add("Text",, "Startup setting saved successfully!")
-        msgGui.Add("Button", "Default w100", "OK").OnEvent("Click", (*) => msgGui.Destroy())
-        
-        ; Position the GUI closer to center but slightly to the right
-        screenWidth := A_ScreenWidth
-        guiWidth := 300
-        xPos := (screenWidth - guiWidth) * 0.6  ; 60% from left (closer to center)
-        msgGui.Show("x" xPos " yCenter")
-    } catch as e {
-        MsgBox "Error saving startup setting: " e.Message, "Error", "Iconx"
-    }
-}
-
-IsStartupEnabled() {
-    ; Check if startup shortcut exists
-    return FileExist(A_Startup "\AHK-Tools.lnk")
-}
-
 ShowAbout(*) {
-    aboutText := Format("{1}`nVersion {2}`n`nCreated by: {3}`nGitHub: {4}", 
-                       CONFIG.appName, 
-                       CONFIG.version, 
-                       CONFIG.author,
-                       CONFIG.GitHub)
-    MsgBox aboutText
+    ; Create retro-styled about page
+    aboutGui := Gui("+AlwaysOnTop", "About - AHK Tools v" CONFIG.version)
+    aboutGui.SetFont("s9", "Courier New")  ; Retro monospace font
+    aboutGui.BackColor := 0x000080  ; Classic blue background
+    
+    ; ASCII art title - multi-line (with more vertical spacing)
+    titleText1 := aboutGui.Add("Text", "x30 y30 w480 Center c0xFFFF00", " █████╗ ██╗  ██╗██╗  ██╗")
+    titleText1.SetFont("s12 Bold", "Courier New")
+    titleText2 := aboutGui.Add("Text", "x30 y50 w480 Center c0xFFFF00", "██╔══██╗██║  ██║██║ ██╔╝")
+    titleText2.SetFont("s12 Bold", "Courier New")
+    titleText3 := aboutGui.Add("Text", "x30 y70 w480 Center c0xFFFF00", "███████║███████║█████╔╝ ")
+    titleText3.SetFont("s12 Bold", "Courier New")
+    titleText4 := aboutGui.Add("Text", "x30 y90 w480 Center c0xFFFF00", "██╔══██║██╔══██║██╔═██╗ ")
+    titleText4.SetFont("s12 Bold", "Courier New")
+    titleText5 := aboutGui.Add("Text", "x30 y110 w480 Center c0xFFFF00", "██║  ██║██║  ██║██║  ██╗")
+    titleText5.SetFont("s12 Bold", "Courier New")
+    titleText6 := aboutGui.Add("Text", "x30 y130 w480 Center c0xFFFF00", "╚═╝  ╚═╝╚═╝  ╚═╝╚═╝  ╚═╝")
+    titleText6.SetFont("s12 Bold", "Courier New")
+    
+    ; Tools subtitle (fixed positioning and height)
+    toolsText := aboutGui.Add("Text", "x30 y155 w480 h30 Center c0xFFFF00", "TOOLS")
+    toolsText.SetFont("s14 Bold", "Courier New")
+    
+    ; Subtitle in retro style
+    subtitleText := aboutGui.Add("Text", "x30 y195 w480 Center c0x00FFFF", "◄ PRODUCTIVITY AUTOMATION SUITE ►")
+    subtitleText.SetFont("s10", "Courier New")
+    
+    ; Retro separator
+    separator1 := aboutGui.Add("Text", "x30 y235 w480 Center c0xFFFFFF", "══════════════════════════════════════════════════════")
+    
+    ; Version info in retro style
+    versionText := aboutGui.Add("Text", "x30 y275 w480 Center c0x00FF00", "VERSION: " CONFIG.version)
+    versionText.SetFont("s12 Bold", "Courier New")
+    
+    ; Author info in retro style
+    authorText := aboutGui.Add("Text", "x30 y310 w480 Center c0x00FF00", "SCRIPTED BY: " CONFIG.author)
+    authorText.SetFont("s12 Bold", "Courier New")
+    
+    ; GitHub link in retro style (properly centered)
+    linkText := aboutGui.Add("Text", "x30 y350 w480 Center c0xFFFF00", "► VISIT GITHUB REPOSITORY ◄")
+    linkText.SetFont("s10", "Courier New")
+    linkText.OnEvent("Click", (*) => Run(CONFIG.GitHub))
+    
+    ; Bottom separator
+    separator2 := aboutGui.Add("Text", "x30 y390 w480 Center c0xFFFFFF", "══════════════════════════════════════════════════════")
+    
+    ; Retro copyright style
+    copyrightText := aboutGui.Add("Text", "x30 y425 w480 Center c0x808080", "2024 - OPEN SOURCE MIT LICENSE - COPYLEFT")
+    copyrightText.SetFont("s9", "Courier New")
+    
+    ; Help and OK buttons in retro style
+    helpBtn := aboutGui.Add("Button", "x185 y465 w80 h35", "[ HELP ]")
+    helpBtn.SetFont("s11 Bold", "Courier New")
+    helpBtn.OnEvent("Click", (*) => ShowHelpDialog())
+    
+    okBtn := aboutGui.Add("Button", "x275 y465 w80 h35", "[ OK ]")
+    okBtn.SetFont("s11 Bold", "Courier New")
+    okBtn.OnEvent("Click", (*) => aboutGui.Destroy())
+    
+    ; Escape key handler
+    aboutGui.OnEvent("Escape", (*) => aboutGui.Destroy())
+    
+    ; Show the dialog
+    aboutGui.Show("w540 h520")
+    
+    ; Focus the OK button
+    okBtn.Focus()
 }
 
 ReloadScript(*) {
@@ -144,6 +177,9 @@ CheckAdminRequired() {
         ; Add buttons
         adminGui.Add("Button", "Default w100", "Yes").OnEvent("Click", (*) => ReloadAsAdmin())
         adminGui.Add("Button", "w100", "No").OnEvent("Click", (*) => adminGui.Destroy())
+        
+        ; Apply theme
+        ApplyThemeToGui(adminGui)
         
         ; Show the GUI
         adminGui.Show()
@@ -179,13 +215,20 @@ InitializeScript() {
     CheckEnvironment()
     
     ; Show startup help message with 1-second timeout
-    MsgBox "Press Win + F1 anytime to see keyboard shortcuts", "Keyboard Shortcuts Available", "T1 64"  ; T1 for 1-second timeout, 64 for information icon
+    MsgBox "Press Win + F1 anytime to see keyboard shortcuts", "Keyboard Shortcuts Available", "T0.5 64"  ; T1 for 1-second timeout, 64 for information icon
 }
 
 SetupTrayMenu() {
     ; Clear default menu items and add custom ones
     A_TrayMenu.Delete()  ; Clear default items
-    A_TrayMenu.Add("Settings", (*) => ShowSettings())
+    
+    ; Add startup toggle option
+    if IsStartupEnabled() {
+        A_TrayMenu.Add("Disable Startup", (*) => ToggleStartup(false))
+    } else {
+        A_TrayMenu.Add("Enable Startup", (*) => ToggleStartup(true))
+    }
+    
     A_TrayMenu.Add()  ; Separator
     A_TrayMenu.Add("Reload Script", (*) => ReloadScript())
     A_TrayMenu.Add("Reload as Admin", (*) => ReloadAsAdmin())
@@ -503,44 +546,49 @@ WolframSearch() {
     SetTimer () => ToolTip(), -1500  ; Hide tooltip after 1.5 seconds
 }
 
-; Win + F1 to show help dialog using a real table format with a monospaced font
+; Win + F1 to show help dialog with clean formatting
 #F1::
 {
-    MyGui := Gui()  
-    MyGui.Opt("+AlwaysOnTop")
-    ; Use a monospaced font to ensure the table alignment is preserved
-    MyGui.SetFont("s10", "Consolas")
+    MyGui := Gui("+AlwaysOnTop", "Keyboard Shortcuts - AHK Tools")  
+    MyGui.SetFont("s9", "Segoe UI")
     
+    ; Simple, clean format that actually works in AutoHotkey
     helpText := "
-    (
-┌───────────────┬───────────────────────────────────────────────┐
-│   Shortcut    │                Description                    │
-├───────────────┼───────────────────────────────────────────────┤
-│ Win + Del     │ Suspend/Resume Script                         │
-│ Win + Enter   │ Open Terminal as Administrator                │
-│ Win + F1      │ Show This Help Dialog                         │
-│ Win + F2      │ Toggle Numpad Mode (Row numbers 1-9,0)        │
-│ Win + F3      │ Wi-Fi Reconnect and Flush DNS                 │
-│ Win + F4      │ Toggle Hourly Chime (Plays sound every hour)  │
-│ Win + F12     │ Check Windows File Integrity                  │
-│ Win + C       │ Open Calculator                               │
-│ Win + Q       │ Force Quit Active Application                 │
-│ Win + X       │ System Power Options (Sleep/Shutdown/Logout)  │
-├───────────────┼───────────────────────────────────────────────┤
-│ Alt + A       │ WolframAlpha Search                           │
-│ Alt + D       │ DuckDuckGo Search                             │
-│ Alt + E       │ Open Selected Text in Editor                  │
-│ Alt + F       │ DeepSeek AI Search                            │
-│ Alt + G       │ Search in Game Databases                      │
-│ Alt + S       │ Perplexity Search                             │
-│ Alt + T       │ Open Selected Text in Notepad                  │
-│ Alt + W       │ Open Selected URL in Browser                  │
-└───────────────┴───────────────────────────────────────────────┘
-    )"
+(
+SYSTEM SHORTCUTS:
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+Win + Del         Suspend/Resume Script
+Win + Enter       Open Terminal as Administrator
+Win + F1          Show This Help Dialog
+Win + F2          Toggle Numpad Mode (Row numbers 1-9,0)
+Win + F3          Wi-Fi Reconnect and Flush DNS
+Win + F4          Toggle Hourly Chime
+Win + F12         Check Windows File Integrity
+Win + C           Open Calculator
+Win + Q           Force Quit Active Application
+Win + X           System Power Options
+
+ALT SHORTCUTS:
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+Alt + A           WolframAlpha Search
+Alt + C           Currency Converter (Auto-detects amounts)
+Alt + D           DuckDuckGo Search
+Alt + E           Open Selected Text in Editor
+Alt + G           Search in Game Databases
+Alt + S           Perplexity Search
+Alt + T           Open Selected Text in Notepad
+Alt + W           Open Selected URL in Browser
+)"
     
-    MyGui.Add("Text",, helpText)
-    MyGui.Add("Link",, 'GitHub: <a href="https://github.com/ahmedalfahdi">https://github.com/ahmedalfahdi</a>')
-    MyGui.Add("Button", "Default", "OK").OnEvent("Click", (*) => MyGui.Destroy())
+    MyGui.Add("Text", "w450", helpText)
+    MyGui.Add("Button", "w100 Default", "OK").OnEvent("Click", (*) => MyGui.Destroy())
+    
+    ; Add escape key handler
+    MyGui.OnEvent("Escape", (*) => MyGui.Destroy())
+    
+    ; Apply theme
+    ApplyThemeToGui(MyGui)
+    
     MyGui.Show()
 }
 
@@ -570,6 +618,9 @@ WolframSearch() {
     
     ; Add Esc key to close the GUI
     powerGui.OnEvent("Escape", (*) => powerGui.Destroy())
+    
+    ; Apply theme
+    ApplyThemeToGui(powerGui)
     
     ; Show the GUI
     powerGui.Show()
@@ -874,7 +925,7 @@ PlayHourlyChime() {
     }
 }
 
-; Win + Y for currency converter with GUI and dropdowns
+; Win + C for currency converter with GUI and dropdowns
 !c::
 {
     ; Try to get selected text first
@@ -980,9 +1031,10 @@ PlayHourlyChime() {
             if currencyMap.Has(symbol)
                 parsedCurrency := currencyMap[symbol]
         }
-        ; Pattern 5: Just a number (no currency symbol)
+        ; Pattern 5: Just a number (no currency symbol) - assume USD
         else if RegExMatch(selectedText, "^\d+(?:\.\d+)?$") {
             parsedAmount := selectedText
+            parsedCurrency := "USD"  ; Default to USD for plain numbers
         }
         ; Pattern 6: Currency codes like "USD 100" or "100 USD"
         else if RegExMatch(selectedText, "([A-Z]{3})\s*(\d+(?:\.\d+)?)", &match) {
@@ -1077,13 +1129,23 @@ PlayHourlyChime() {
     swapBtn := currencyGui.Add("Button", "x120 y255 w100 h30", "Swap")
     swapBtn.OnEvent("Click", (*) => SwapCurrencies())
     
+    ; Add escape key handler to close GUI
+    currencyGui.OnEvent("Escape", (*) => currencyGui.Destroy())
+    
     ; Show GUI
     currencyGui.Show("w320 h300")
+    
+    ; Apply theme after all controls are created
+    ApplyThemeToGui(currencyGui)
+    
     amountEdit.Focus()
     
-    ; Auto-convert if we have both amount and currency
+    ; Auto-convert if we have both amount and currency (including plain numbers defaulting to USD)
     if parsedAmount && parsedCurrency {
         SetTimer () => AutoConvert(), -100  ; Small delay to ensure GUI is ready
+    }
+    else if parsedAmount {  ; Plain number detected, will use USD as default
+        SetTimer () => AutoConvert(), -100  ; Convert with USD default
     }
 }
 
@@ -1350,4 +1412,78 @@ DoConversion() {
         resultText.Text := "Error in currency conversion: " e.Message
         timestampText.Text := ""
     }
+}
+
+ToggleStartup(enable) {
+    try {
+        startupPath := A_Startup "\AHK-Tools.lnk"
+        
+        if (enable) {
+            ; Create shortcut in startup folder
+            FileCreateShortcut A_ScriptFullPath, startupPath, A_ScriptDir, "", "AHK Tools - Productivity Hotkeys"
+            MsgBox "Startup enabled! Script will run when Windows starts.", "Startup Setting", "T2 64"
+        } else {
+            ; Remove shortcut from startup folder
+            if FileExist(startupPath) {
+                FileDelete startupPath
+            }
+            MsgBox "Startup disabled! Script will not run when Windows starts.", "Startup Setting", "T2 64"
+        }
+        
+        ; Refresh tray menu to update the option
+        SetupTrayMenu()
+        
+    } catch as e {
+        MsgBox "Error: " e.Message "`n`nTo manually set startup:`n1. Copy a shortcut of this script`n2. Paste it to: " A_Startup, "Error", "Iconx"
+    }
+}
+
+IsStartupEnabled() {
+    ; Check if startup shortcut exists
+    return FileExist(A_Startup "\AHK-Tools.lnk")
+}
+
+; Function to show help dialog
+ShowHelpDialog() {
+    MyGui := Gui("+AlwaysOnTop", "Keyboard Shortcuts - AHK Tools")  
+    MyGui.SetFont("s9", "Segoe UI")
+    
+    ; Simple, clean format that actually works in AutoHotkey
+    helpText := "
+    (
+SYSTEM SHORTCUTS:
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+Win + Del         Suspend/Resume Script
+Win + Enter       Open Terminal as Administrator
+Win + F1          Show This Help Dialog
+Win + F2          Toggle Numpad Mode (Row numbers 1-9,0)
+Win + F3          Wi-Fi Reconnect and Flush DNS
+Win + F4          Toggle Hourly Chime
+Win + F12         Check Windows File Integrity
+Win + C           Open Calculator
+Win + Q           Force Quit Active Application
+Win + X           System Power Options
+
+ALT SHORTCUTS:
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+Alt + A           WolframAlpha Search
+Alt + C           Currency Converter (Auto-detects amounts)
+Alt + D           DuckDuckGo Search
+Alt + E           Open Selected Text in Editor
+Alt + G           Search in Game Databases
+Alt + S           Perplexity Search
+Alt + T           Open Selected Text in Notepad
+Alt + W           Open Selected URL in Browser
+)"
+    
+    MyGui.Add("Text", "w450", helpText)
+    MyGui.Add("Button", "w100 Default", "OK").OnEvent("Click", (*) => MyGui.Destroy())
+    
+    ; Add escape key handler
+    MyGui.OnEvent("Escape", (*) => MyGui.Destroy())
+    
+    ; Apply theme
+    ApplyThemeToGui(MyGui)
+    
+    MyGui.Show()
 }

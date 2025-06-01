@@ -33,6 +33,9 @@ global selectGui := 0
 global guiClosed := false
 global radioGroup := 0
 
+; Global variable for currency converter GUI
+global currencyConverterGui := ""
+
 ; =================== TEXT REPLACEMENT SECTION ===================
 ; Text replacement hotstrings (previously Txt-Replacment.ahk)
 ; Add your text replacements here using the format:
@@ -856,7 +859,7 @@ PlayHourlyChime() {
             }
 
             try {
-                psCmd := '*RunAs powershell.exe -WindowStyle Normal -Command "Start-Process cmd -ArgumentList \"/k ' command '\" -Verb RunAs"'
+                psCmd := '*RunAs powershell.exe -WindowStyle Normal -Command "Start-Process cmd -ArgumentList "/k ' command '\" -Verb RunAs"'
                 Run(psCmd)
             } catch as e {
                 MsgBox "Error running command: " e.Message, "Error", "Iconx"
@@ -869,4 +872,289 @@ PlayHourlyChime() {
             MsgBox "An error occurred: " e.Message, "Error", "Iconx"
         }
     }
-} 
+}
+
+; Win + Y for currency converter with GUI and dropdowns
+!c::
+{
+    ; Create GUI
+    global currencyGui := Gui("+AlwaysOnTop", "Currency Converter")
+    currencyGui.SetFont("s10", "Segoe UI")
+    
+    ; Common currencies list
+    currencies := ["USD", "EUR", "GBP", "JPY", "AUD", "CAD", "CHF", "CNY", "SEK", "NZD", "MXN", "SGD", "HKD", "NOK", "TRY", "ZAR", "BRL", "INR", "KRW", "PLN", "OMR"]
+    
+    ; Amount input
+    currencyGui.Add("Text", "x10 y10", "Amount:")
+    global amountEdit := currencyGui.Add("Edit", "x10 y30 w150")
+    amountEdit.OnEvent("Change", (*) => AutoConvert())
+    
+    ; From currency dropdown
+    currencyGui.Add("Text", "x10 y65", "From Currency:")
+    global fromCombo := currencyGui.Add("ComboBox", "x10 y85 w150", currencies)
+    fromCombo.Text := "USD"  ; Default selection
+    fromCombo.OnEvent("Change", (*) => AutoConvert())
+    
+    ; To currency dropdown
+    currencyGui.Add("Text", "x10 y120", "To Currency:")
+    global toCombo := currencyGui.Add("ComboBox", "x10 y140 w150", currencies)
+    toCombo.Text := "OMR"  ; Default selection
+    toCombo.OnEvent("Change", (*) => AutoConvert())
+    
+    ; Result display - Main conversion result
+    global resultText := currencyGui.Add("Edit", "x10 y180 w300 h35 ReadOnly")
+    resultText.SetFont("s12 Bold", "Segoe UI")  ; Larger, bold font for the result
+    resultText.Text := "Enter amount and select currencies"
+    
+    ; Timestamp display - Smaller font
+    global timestampText := currencyGui.Add("Edit", "x10 y220 w300 h25 ReadOnly")
+    timestampText.SetFont("s8", "Segoe UI")  ; Smaller font for timestamp
+    timestampText.Text := "for automatic conversion"
+    
+    ; Buttons
+    closeBtn := currencyGui.Add("Button", "x10 y250 w100 h30", "Close")
+    closeBtn.OnEvent("Click", (*) => currencyGui.Destroy())
+    
+    swapBtn := currencyGui.Add("Button", "x120 y250 w100 h30", "Swap")
+    swapBtn.OnEvent("Click", (*) => SwapCurrencies())
+    
+    ; Show GUI
+    currencyGui.Show("w320 h295")
+    amountEdit.Focus()
+}
+
+; Function to swap from/to currencies
+SwapCurrencies() {
+    try {
+        fromCur := fromCombo.Text
+        toCur := toCombo.Text
+        fromCombo.Text := toCur
+        toCombo.Text := fromCur
+    } catch as e {
+        ; If swap fails, show error in result
+        try {
+            resultText.Text := "Error swapping currencies: " e.Message
+        }
+    }
+}
+
+; Currency conversion function using Python instead of PowerShell
+ConvertCurrencyPS() {
+    AutoConvert()
+}
+
+AutoConvert() {
+    ; Add a timer to delay conversion while user is still typing
+    static conversionTimer := 0
+    if conversionTimer
+        SetTimer conversionTimer, 0  ; Cancel previous timer
+    
+    conversionTimer := () => DoConversion()
+    SetTimer conversionTimer, -500  ; Convert after 500ms delay
+}
+
+DoConversion() {
+    ; Get values from GUI controls properly
+    try {
+        amount := Trim(amountEdit.Text)
+        fromCur := fromCombo.Text
+        toCur := toCombo.Text
+    } catch as e {
+        ; If control access fails, show error
+        try {
+            resultText.Text := "Error accessing GUI controls: " e.Message
+        }
+        return
+    }
+    
+    ; Validate inputs
+    if !amount {
+        resultText.Text := "Please enter an amount"
+        timestampText.Text := ""
+        return
+    }
+    
+    if !RegExMatch(amount, "^\d+(\.\d+)?$") {
+        resultText.Text := "Invalid amount. Please enter numbers only."
+        timestampText.Text := ""
+        return
+    }
+    
+    if !fromCur || !toCur {
+        resultText.Text := "Please select both currencies"
+        timestampText.Text := ""
+        return
+    }
+    
+    if (fromCur = toCur) {
+        currentTime := FormatTime(, "yyyy-MM-dd HH:mm:ss")
+        resultText.Text := amount " " fromCur " = " amount " " toCur
+        timestampText.Text := "Same currency: " currentTime
+        return
+    }
+    
+    ; Currency converter using Python instead of PowerShell
+    try {
+        resultText.Text := "Converting " amount " " fromCur " to " toCur "..."
+        
+        ; Initialize all variables to avoid scope issues
+        tempScript := ""
+        tempOutput := ""
+        pythonScript := ""
+        debugInfo := "Starting conversion...`n"
+        
+        ; Create Python script for currency conversion
+        tempOutput := A_ScriptDir "\currency_output.txt"
+        pythonScript := 'import sys' . "`n"
+        pythonScript .= 'import json' . "`n"
+        pythonScript .= 'try:' . "`n"
+        pythonScript .= '    import urllib.request' . "`n"
+        pythonScript .= '    from_cur, to_cur, amount = sys.argv[1], sys.argv[2], float(sys.argv[3])' . "`n"
+        pythonScript .= '    url = f"https://api.exchangerate-api.com/v4/latest/{from_cur}"' . "`n"
+        pythonScript .= '    ' . "`n"
+        pythonScript .= '    # Write to hardcoded output file' . "`n"
+        pythonScript .= '    with open(r"' . tempOutput . '", "w", encoding="utf-8") as output:' . "`n"
+        pythonScript .= '        output.write(f"Fetching rates for {from_cur}...\\n")' . "`n"
+        pythonScript .= '        output.flush()' . "`n"
+        pythonScript .= '        ' . "`n"
+        pythonScript .= '        with urllib.request.urlopen(url, timeout=10) as response:' . "`n"
+        pythonScript .= '            data = json.loads(response.read().decode())' . "`n"
+        pythonScript .= '        ' . "`n"
+        pythonScript .= '        if to_cur in data["rates"]:' . "`n"
+        pythonScript .= '            rate = data["rates"][to_cur]' . "`n"
+        pythonScript .= '            result = amount * rate' . "`n"
+        pythonScript .= '            output.write(f"{amount} {from_cur} = {result:.4f} {to_cur}\\n")' . "`n"
+        pythonScript .= '            output.write(f"Rate: 1 {from_cur} = {rate:.6f} {to_cur}\\n")' . "`n"
+        pythonScript .= '            output.write("API: exchangerate-api.com\\n")' . "`n"
+        pythonScript .= '        else:' . "`n"
+        pythonScript .= '            output.write(f"Currency {to_cur} not found\\n")' . "`n"
+        pythonScript .= 'except Exception as e:' . "`n"
+        pythonScript .= '    with open(r"' . tempOutput . '", "w", encoding="utf-8") as output:' . "`n"
+        pythonScript .= '        output.write(f"Error: {e}\\n")' . "`n"
+        
+        ; Save Python script to file - try script directory instead of temp
+        tempScript := A_ScriptDir "\currency_convert.py"
+        
+        debugInfo .= "Temp script: " tempScript "`n"
+        debugInfo .= "Temp output: " tempOutput "`n"
+        
+        ; Clean up any existing files safely
+        if FileExist(tempScript)
+            try FileDelete(tempScript)
+        if FileExist(tempOutput)
+            try FileDelete(tempOutput)
+        
+        ; Create the Python script file
+        try {
+            FileAppend(pythonScript, tempScript)
+            resultText.Text := "Python script created successfully. Testing Python..."
+            
+            ; Try Python commands
+            pythonCommands := ["python", "python3", "py"]
+            pythonWorked := false
+            result := ""
+            
+            ; First, test if Python is accessible at all
+            for index, pythonCmd in pythonCommands {
+                debugInfo .= "Testing " pythonCmd " availability: "
+                try {
+                    ; Try to run Python version command without output redirection
+                    RunWait(pythonCmd ' --version', , "Hide")
+                    debugInfo .= "✓ Command runs (exit code 0)`n"
+                    
+                    ; Now try running our actual currency script (Python writes to file directly)
+                    scriptCmd := pythonCmd ' "' tempScript '" "' fromCur '" "' toCur '" "' amount '"'
+                    debugInfo .= "Running currency script: "
+                    RunWait(scriptCmd, , "Hide")
+                    
+                    ; Check if Python created the output file
+                    if FileExist(tempOutput) {
+                        result := FileRead(tempOutput)
+                        debugInfo .= "✓ Got output file`n"
+                        if result && InStr(result, fromCur) && InStr(result, toCur) && !InStr(result, "Error:") {
+                            pythonWorked := true
+                            debugInfo .= "✓ SUCCESS!`n"
+                            break
+                        } else {
+                            debugInfo .= "✗ Script error: " SubStr(result, 1, 100) "...`n"
+                        }
+                    } else {
+                        debugInfo .= "✗ No output file created by Python script`n"
+                    }
+                } catch as e {
+                    debugInfo .= "✗ Command failed: " e.Message "`n"
+                }
+            }
+            
+            try FileDelete(tempScript)
+            
+            if pythonWorked {
+                try FileDelete(tempOutput)
+                
+                if result {
+                    ; First, properly convert \n to actual newlines
+                    result := StrReplace(result, "\n", "`n")
+                    result := StrReplace(result, "\r", "")
+                    
+                    ; Parse the result to extract just the conversion value
+                    lines := StrSplit(result, "`n")
+                    conversionLine := ""
+                    
+                    for line in lines {
+                        line := Trim(line)
+                        ; Look for the main conversion line (contains = and both currencies)
+                        if InStr(line, " = ") && InStr(line, fromCur) && InStr(line, toCur) && !InStr(line, "Rate:") {
+                            conversionLine := Trim(line)  ; Extra trim to ensure clean line
+                            break
+                        }
+                    }
+                    
+                    ; Format with timestamp
+                    currentTime := FormatTime(, "yyyy-MM-dd HH:mm:ss")
+                    if conversionLine {
+                        resultText.Text := conversionLine
+                        timestampText.Text := "Rate updated: " currentTime
+                    } else {
+                        resultText.Text := "Conversion completed"
+                        timestampText.Text := "Rate updated: " currentTime
+                    }
+                } else {
+                    resultText.Text := "No conversion data received"
+                    timestampText.Text := ""
+                }
+            } else {
+                try FileDelete(tempOutput)
+                
+                ; If we can't create files, skip Python and go straight to fallback
+                ; Fallback: Simple hardcoded converter for common currencies
+                rates := Map(
+                    "USD_OMR", 0.385,
+                    "OMR_USD", 2.597,
+                    "USD_EUR", 0.85,
+                    "EUR_USD", 1.176,
+                    "USD_GBP", 0.73,
+                    "GBP_USD", 1.37
+                )
+                
+                rateKey := fromCur "_" toCur
+                if rates.Has(rateKey) {
+                    rate := rates[rateKey]
+                    result := amount * rate
+                    currentTime := FormatTime(, "yyyy-MM-dd HH:mm:ss")
+                    resultText.Text := amount " " fromCur " = " Round(result, 4) " " toCur
+                    timestampText.Text := "Fallback rate used: " currentTime
+                } else {
+                    resultText.Text := "Currency pair not supported"
+                    timestampText.Text := "Supported: USD⟷OMR, USD⟷EUR, USD⟷GBP"
+                }
+            }
+            
+        } catch as e {
+            resultText.Text := "Error in currency conversion: " e.Message
+            timestampText.Text := ""
+        }
+    } catch as e {
+        resultText.Text := "Error in currency conversion: " e.Message
+        timestampText.Text := ""
+    }
+}

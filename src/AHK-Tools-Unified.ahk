@@ -10,7 +10,7 @@ if (SubStr(A_AhkVersion, 1, 1) != "2") {
 ; Configuration variables (previously config.ahk)
 global CONFIG := {
     appName: "AHK Tools for power users",
-    version: "1.0.1",
+    version: "2.0.0",
     author: "Ahmed N. Alfahdi",
     GitHub: "https://github.com/ahmedalfahdi",
     ; Existing configurations

@@ -320,6 +320,7 @@ EnableNumpadToggle:=0
 8::Numpad8
 9::Numpad9
 0::Numpad0
+Delete::Insert
 #HotIf  ; End context sensitivity
 
 ; DuckDuckGo search hotkey
@@ -529,7 +530,7 @@ WolframSearch() {
 │ Alt + F       │ DeepSeek AI Search                            │
 │ Alt + G       │ Search in Game Databases                      │
 │ Alt + S       │ Perplexity Search                             │
-│ Alt + T       │ Search Selected Text in Torrent Engine        │
+│ Alt + T       │ Open Selected Text in Notepad                  │
 │ Alt + W       │ Open Selected URL in Browser                  │
 └───────────────┴───────────────────────────────────────────────┘
     )"
@@ -759,13 +760,13 @@ PlayHourlyChime() {
     SetTimer () => ToolTip(), -1500
 }
 
-; Alt + T to search selected text in torrent search engine
+; Alt + T to open selected text in Notepad
 !t::
 {
     ; Save the current clipboard content
     savedClipboard := ClipboardAll()
     A_Clipboard := ""  ; Clear clipboard
-    
+
     ; Copy selected text to clipboard
     Send "^c"
     if !ClipWait(0.5) {  ; Wait up to 0.5 seconds for clipboard to update
@@ -773,23 +774,27 @@ PlayHourlyChime() {
         A_Clipboard := savedClipboard  ; Restore clipboard
         return
     }
-    
-    ; Open torrent search engine with the selected text
+
+    ; Get the text from clipboard
+    selectedText := A_Clipboard
+
+    ; Create a temporary file
+    tempFile := A_Temp "\SelectedText.txt"
+    try FileDelete(tempFile)  ; Ignore error if file doesn't exist
+    FileAppend selectedText, tempFile
+
+    ; Open in Notepad
     try {
-        ; Encode the search term for URL
-        searchTerm := UrlEncode(A_Clipboard)
-        
-        ; Open the search engine with the text
-        Run "https://cse.google.com/cse?cx=006516753008110874046:0led5tukccj#gsc.tab=0&gsc.q=" searchTerm
-        ToolTip "Searching torrents..."
+        Run "notepad.exe '" tempFile "'"
+        ToolTip "Opening selected text in Notepad..."
     } catch as e {
-        MsgBox "Failed to open search engine: " e.Message, "Error", "Iconx"
+        MsgBox "Failed to open Notepad: " e.Message, "Error", "Iconx"
     }
-    
+
     ; Restore the original clipboard content
     A_Clipboard := savedClipboard
     savedClipboard := ""  ; Free memory
-    
+
     ; Remove tooltip after 1.5 seconds
     SetTimer () => ToolTip(), -1500
 }

@@ -1163,6 +1163,7 @@ PlayHourlyChime() {
     ; From currency dropdown
     currencyGui.Add("Text", "x10 y65", "From Currency:")
     global fromCombo := currencyGui.Add("ComboBox", "x10 y85 w150", currencies)
+    fromCombo.SetFont("s8", "Segoe UI")  ; Smaller font for dropdown
     fromCombo.OnEvent("Change", (*) => AutoConvert())
     
     ; Set detected currency or default to USD
@@ -1174,12 +1175,13 @@ PlayHourlyChime() {
     ; To currency dropdown
     currencyGui.Add("Text", "x10 y120", "To Currency:")
     global toCombo := currencyGui.Add("ComboBox", "x10 y140 w150", currencies)
+    toCombo.SetFont("s8", "Segoe UI")  ; Smaller font for dropdown
     toCombo.Text := "OMR"  ; Default selection
     toCombo.OnEvent("Change", (*) => AutoConvert())
     
     ; Result display - Main conversion result
-    global resultText := currencyGui.Add("Edit", "x10 y180 w300 h35 ReadOnly")
-    resultText.SetFont("s12 Bold", "Segoe UI")  ; Larger, bold font for the result
+    global resultText := currencyGui.Add("Edit", "x10 y175 w260 h25 ReadOnly")
+    resultText.SetFont("s11 Bold", "Segoe UI")  ; Slightly smaller but still prominent
     if parsedAmount && parsedCurrency
         resultText.Text := "Auto-detected: " parsedAmount " " parsedCurrency
     else if parsedAmount
@@ -1187,23 +1189,32 @@ PlayHourlyChime() {
     else
         resultText.Text := "Enter amount and select currencies"
     
+    ; Small copy emoji button next to result
+    global copyEmojiBtn := currencyGui.Add("Button", "x275 y175 w35 h25", "📋")
+    copyEmojiBtn.SetFont("s10", "Segoe UI")
+    copyEmojiBtn.OnEvent("Click", (*) => CopyResult())
+    
     ; Timestamp display - Smaller font
-    global timestampText := currencyGui.Add("Edit", "x10 y220 w300 h25 ReadOnly")
+    global timestampText := currencyGui.Add("Edit", "x10 y205 w300 h20 ReadOnly")
     timestampText.SetFont("s8", "Segoe UI")  ; Smaller font for timestamp
     timestampText.Text := "for automatic conversion"
     
-    ; Buttons
-    closeBtn := currencyGui.Add("Button", "x10 y255 w100 h30", "Close")
+    ; Auto-copy checkbox with better spacing
+    global autoCopyCheck := currencyGui.Add("Checkbox", "x10 y235 w200", "Auto-copy to clipboard")
+    autoCopyCheck.Value := 0  ; Default to disabled
+    
+    ; Buttons with better spacing (removed copy button)
+    closeBtn := currencyGui.Add("Button", "x10 y265 w80 h30", "Close")
     closeBtn.OnEvent("Click", (*) => currencyGui.Destroy())
     
-    swapBtn := currencyGui.Add("Button", "x120 y255 w100 h30", "Swap")
+    swapBtn := currencyGui.Add("Button", "x100 y265 w80 h30", "Swap")
     swapBtn.OnEvent("Click", (*) => SwapCurrencies())
     
     ; Add escape key handler to close GUI
     currencyGui.OnEvent("Escape", (*) => currencyGui.Destroy())
     
-    ; Show GUI
-    currencyGui.Show("w320 h300")
+    ; Show GUI with proper size
+    currencyGui.Show("w320 h310")
     
     ; Apply theme after all controls are created
     ApplyThemeToGui(currencyGui)
@@ -1240,6 +1251,24 @@ SwapCurrencies() {
         try {
             resultText.Text := "Error swapping currencies: " e.Message
         }
+    }
+}
+
+; Function to manually copy the result
+CopyResult() {
+    try {
+        currentResult := resultText.Text
+        if (currentResult && currentResult != "Enter amount and select currencies" && !InStr(currentResult, "Auto-detected")) {
+            A_Clipboard := currentResult
+            ToolTip "Result copied to clipboard"
+            SetTimer(() => ToolTip(), -1000)
+        } else {
+            ToolTip "No conversion result to copy"
+            SetTimer(() => ToolTip(), -1000)
+        }
+    } catch as e {
+        ToolTip "Error copying to clipboard"
+        SetTimer(() => ToolTip(), -1000)
     }
 }
 
@@ -1419,6 +1448,14 @@ DoConversion() {
                     if conversionLine {
                         resultText.Text := conversionLine
                         timestampText.Text := "Rate updated: " currentTime
+                        
+                        ; Automatically copy conversion result to clipboard only if checkbox is checked
+                        if (autoCopyCheck.Value) {
+                            A_Clipboard := conversionLine
+                            ; Show brief tooltip to indicate clipboard copy
+                            ToolTip "Conversion copied to clipboard"
+                            SetTimer(() => ToolTip(), -1000)
+                        }
                     } else {
                         resultText.Text := "Conversion completed"
                         timestampText.Text := "Rate updated: " currentTime
@@ -1445,8 +1482,17 @@ DoConversion() {
                     rate := rates[rateKey]
                     result := amount * rate
                     currentTime := FormatTime(, "yyyy-MM-dd HH:mm:ss")
-                    resultText.Text := amount " " fromCur " = " Round(result, 4) " " toCur
+                    conversionResult := amount " " fromCur " = " Round(result, 4) " " toCur
+                    resultText.Text := conversionResult
                     timestampText.Text := "Fallback rate used: " currentTime
+                    
+                    ; Automatically copy conversion result to clipboard only if checkbox is checked
+                    if (autoCopyCheck.Value) {
+                        A_Clipboard := conversionResult
+                        ; Show brief tooltip to indicate clipboard copy
+                        ToolTip "Conversion copied to clipboard"
+                        SetTimer(() => ToolTip(), -1000)
+                    }
                 } else {
                     resultText.Text := "Currency pair not supported"
                     timestampText.Text := "Supported: USD⟷OMR, USD⟷EUR, USD⟷GBP"
@@ -1470,8 +1516,17 @@ DoConversion() {
                 rate := rates[rateKey]
                 result := amount * rate
                 currentTime := FormatTime(, "yyyy-MM-dd HH:mm:ss")
-                resultText.Text := amount " " fromCur " = " Round(result, 4) " " toCur
+                conversionResult := amount " " fromCur " = " Round(result, 4) " " toCur
+                resultText.Text := conversionResult
                 timestampText.Text := "Fallback rate used: " currentTime
+                
+                ; Automatically copy conversion result to clipboard only if checkbox is checked
+                if (autoCopyCheck.Value) {
+                    A_Clipboard := conversionResult
+                    ; Show brief tooltip to indicate clipboard copy
+                    ToolTip "Conversion copied to clipboard"
+                    SetTimer(() => ToolTip(), -1000)
+                }
             } else {
                 resultText.Text := "Currency pair not supported"
                 timestampText.Text := "Supported: USD⟷OMR, USD⟷EUR, USD⟷GBP"

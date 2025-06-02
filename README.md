@@ -29,26 +29,34 @@ To run the script automatically on Windows startup:
 
 **Tip:** You can also reload the script as administrator anytime from the tray icon menu (right-click the tray icon → 'Reload as Admin').
 
+## Category Recognition Legend
+
+<span style="color: #FF6B6B">**🔧 System Operations (Win Key)**</span> - System-level commands, some requiring elevated privileges  
+<span style="color: #45B7D1">**📝 Text & Search Operations (Alt Key)**</span> - Text processing and search functions
+
 ## Main Shortcuts
 | Shortcut      | Action                                 |
 |--------------|----------------------------------------|
-| Win+F1       | Show shortcuts help                    |
-| Win+F2       | Toggle Numpad Mode                     |
-| Win+F3       | Wi-Fi reconnect & flush DNS            |
-| Win+F4       | Toggle hourly chime                    |
-| Win+Del      | Suspend/Resume script                  |
-| Win+Enter    | Open Terminal as Admin                 |
-| Win+C        | Open Calculator                        |
-| Win+Q        | Force quit active app                  |
-| Win+X        | Power options (Sleep/Shutdown/Logout)  |
-| Alt+A        | WolframAlpha search                    |
-| Alt+C        | Currency Converter (Auto-detects amounts) |
-| Alt+D        | DuckDuckGo search                      |
-| Alt+E        | Open selected text in editor           |
-| Alt+G        | Game database search                   |
-| Alt+S        | Perplexity search                      |
-| Alt+T        | Open selected text in Notepad          |
-| Alt+W        | Open selected URL in browser           |
+| <span style="color: #FF6B6B">**Win+Del**</span>      | <span style="color: #4ECDC4">Suspend/Resume script</span>                  |
+| <span style="color: #FF6B6B">**Win+Enter** 🔐</span>    | <span style="color: #4ECDC4">Open Terminal as Administrator</span>         |
+| <span style="color: #FF6B6B">**Win+F1**</span>       | <span style="color: #4ECDC4">Show shortcuts help</span>                    |
+| <span style="color: #FF6B6B">**Win+F2**</span>       | <span style="color: #4ECDC4">Toggle Numpad Mode</span>                     |
+| <span style="color: #FF6B6B">**Win+F3** 🔐</span>       | <span style="color: #4ECDC4">Wi-Fi reconnect & flush DNS</span>            |
+| <span style="color: #FF6B6B">**Win+F4**</span>       | <span style="color: #4ECDC4">Toggle hourly chime</span>                    |
+| <span style="color: #FF6B6B">**Win+F12** 🔐</span>      | <span style="color: #4ECDC4">Check Windows File Integrity</span>           |
+| <span style="color: #FF6B6B">**Win+C**</span>        | <span style="color: #4ECDC4">Open Calculator</span>                        |
+| <span style="color: #FF6B6B">**Win+Q**</span>        | <span style="color: #4ECDC4">Force quit active app</span>                  |
+| <span style="color: #FF6B6B">**Win+X**</span>        | <span style="color: #4ECDC4">System Power Options</span>                   |
+| <span style="color: #45B7D1">**Alt+A**</span>        | <span style="color: #96CEB4">WolframAlpha Search</span>                    |
+| <span style="color: #45B7D1">**Alt+C**</span>        | <span style="color: #96CEB4">Currency Converter (Auto-detects amounts)</span> |
+| <span style="color: #45B7D1">**Alt+D**</span>        | <span style="color: #96CEB4">DuckDuckGo Search</span>                      |
+| <span style="color: #45B7D1">**Alt+E**</span>        | <span style="color: #96CEB4">Open Selected Text in Editor</span>           |
+| <span style="color: #45B7D1">**Alt+G**</span>        | <span style="color: #96CEB4">Search in Game Databases</span>               |
+| <span style="color: #45B7D1">**Alt+S**</span>        | <span style="color: #96CEB4">Perplexity Search</span>                      |
+| <span style="color: #45B7D1">**Alt+T**</span>        | <span style="color: #96CEB4">Open Selected Text in Notepad</span>          |
+| <span style="color: #45B7D1">**Alt+W**</span>        | <span style="color: #96CEB4">Open Selected URL in Browser</span>           |
+
+**🔐 = Requires Administrator Privileges**
 
 ## Currency Converter (Alt+C)
 

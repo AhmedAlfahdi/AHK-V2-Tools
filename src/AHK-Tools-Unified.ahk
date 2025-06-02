@@ -10,7 +10,7 @@ if (SubStr(A_AhkVersion, 1, 1) != "2") {
 ; Configuration variables (previously config.ahk)
 global CONFIG := {
     appName: "AHK Tools for power users",
-    version: "2.0.0",
+    version: "2.0.1",
     author: "Ahmed N. Alfahdi",
     GitHub: "https://github.com/ahmedalfahdi",
     ; Existing configurations
@@ -214,8 +214,56 @@ InitializeScript() {
     LoadConfiguration()
     CheckEnvironment()
     
-    ; Show startup help message with 1-second timeout
-    MsgBox "Press Win + F1 anytime to see keyboard shortcuts", "Keyboard Shortcuts Available", "T0.5 64"  ; T1 for 1-second timeout, 64 for information icon
+    ; Show startup/reload success message with custom GUI
+    ShowSuccessMessage()
+}
+
+; Custom success message GUI with green checkmark
+ShowSuccessMessage() {
+    global successGui := Gui("+AlwaysOnTop +ToolWindow -MaximizeBox -MinimizeBox", "Script Ready")
+    successGui.SetFont("s10", "Segoe UI")
+    successGui.BackColor := 0xF0F0F5
+    
+    ; Create smaller green circle background with checkmark
+    checkmarkControl := successGui.Add("Text", "x15 y15 w40 h40 Center c0xFFFFFF Background0x4CAF50", "✓")
+    checkmarkControl.SetFont("s20 Bold", "Segoe UI")
+    
+    ; Success message text
+    successGui.Add("Text", "x70 y20 w250", "AHK Tools v" CONFIG.version " loaded successfully!")
+    successGui.Add("Text", "x70 y38 w250 c0x666666", "All shortcuts are ready to use.")
+    
+    ; OK button with countdown timer inside
+    global okButton := successGui.Add("Button", "x120 y70 w100 h30", "OK (2.500s)")
+    okButton.SetFont("s9", "Segoe UI")
+    okButton.OnEvent("Click", (*) => CloseSuccessGui())
+    
+    ; Show the GUI
+    successGui.Show("w340 h115")
+    
+    ; Focus the OK button so it's preselected
+    okButton.Focus()
+    
+    ; Countdown logic with 10ms precision
+    global remainingTime := 2.5
+    SetTimer(UpdateCountdown, 10)
+}
+
+CloseSuccessGui() {
+    global successGui
+    SetTimer(UpdateCountdown, 0)  ; Stop the timer
+    successGui.Destroy()
+}
+
+UpdateCountdown() {
+    global remainingTime, okButton, successGui
+    remainingTime -= 0.01
+    
+    if (remainingTime > 0) {
+        okButton.Text := Format("OK ({:.3f}s)", remainingTime)
+    } else {
+        SetTimer(UpdateCountdown, 0)  ; Stop the timer
+        successGui.Destroy()
+    }
 }
 
 SetupTrayMenu() {
@@ -555,29 +603,51 @@ WolframSearch() {
     ; Simple, clean format that actually works in AutoHotkey
     helpText := "
 (
-SYSTEM SHORTCUTS:
+SYSTEM SHORTCUTS (some need admin privileges):
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-Win + Del         Suspend/Resume Script
-Win + Enter       Open Terminal as Administrator
-Win + F1          Show This Help Dialog
-Win + F2          Toggle Numpad Mode (Row numbers 1-9,0)
-Win + F3          Wi-Fi Reconnect and Flush DNS
-Win + F4          Toggle Hourly Chime
-Win + F12         Check Windows File Integrity
-Win + C           Open Calculator
-Win + Q           Force Quit Active Application
-Win + X           System Power Options
 
-ALT SHORTCUTS:
+Win + Del      →  Suspend/Resume Script
+
+Win + Enter    →  Open Terminal as Administrator  🔐
+
+Win + F1       →  Show This Help Dialog
+
+Win + F2       →  Toggle Numpad Mode (Row numbers 1-9,0)
+
+Win + F3       →  Wi-Fi Reconnect and Flush DNS  🔐
+
+Win + F4       →  Toggle Hourly Chime (for timekeeping)
+
+Win + F12      →  Check Windows File Integrity  🔐
+
+Win + C        →  Open Calculator
+
+Win + Q        →  Force Quit Active Application
+
+Win + X        →  System Power Options
+
+
+ALT SHORTCUTS (select the text first):
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-Alt + A           WolframAlpha Search
-Alt + C           Currency Converter (Auto-detects amounts)
-Alt + D           DuckDuckGo Search
-Alt + E           Open Selected Text in Editor
-Alt + G           Search in Game Databases
-Alt + S           Perplexity Search
-Alt + T           Open Selected Text in Notepad
-Alt + W           Open Selected URL in Browser
+
+Alt + A        →  WolframAlpha Search
+
+Alt + C        →  Currency Converter (Auto-detects amounts)
+
+Alt + D        →  DuckDuckGo Search
+
+Alt + E        →  Open Selected Text in Editor
+
+Alt + G        →  Search in Game Databases
+
+Alt + S        →  Perplexity Search
+
+Alt + T        →  Open Selected Text in Notepad
+
+Alt + W        →  Open Selected URL in Browser
+
+
+🔐 = Requires Administrator Privileges
 )"
     
     MyGui.Add("Text", "w450", helpText)
@@ -1450,30 +1520,52 @@ ShowHelpDialog() {
     
     ; Simple, clean format that actually works in AutoHotkey
     helpText := "
-    (
-SYSTEM SHORTCUTS:
+(
+SYSTEM SHORTCUTS (some need admin privileges):
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-Win + Del         Suspend/Resume Script
-Win + Enter       Open Terminal as Administrator
-Win + F1          Show This Help Dialog
-Win + F2          Toggle Numpad Mode (Row numbers 1-9,0)
-Win + F3          Wi-Fi Reconnect and Flush DNS
-Win + F4          Toggle Hourly Chime
-Win + F12         Check Windows File Integrity
-Win + C           Open Calculator
-Win + Q           Force Quit Active Application
-Win + X           System Power Options
 
-ALT SHORTCUTS:
+Win + Del      →  Suspend/Resume Script
+
+Win + Enter    →  Open Terminal as Administrator  🔐
+
+Win + F1       →  Show This Help Dialog
+
+Win + F2       →  Toggle Numpad Mode (Row numbers 1-9,0)
+
+Win + F3       →  Wi-Fi Reconnect and Flush DNS  🔐
+
+Win + F4       →  Toggle Hourly Chime (for timekeeping)
+
+Win + F12      →  Check Windows File Integrity  🔐
+
+Win + C        →  Open Calculator
+
+Win + Q        →  Force Quit Active Application
+
+Win + X        →  System Power Options
+
+
+ALT SHORTCUTS (select the text first):
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-Alt + A           WolframAlpha Search
-Alt + C           Currency Converter (Auto-detects amounts)
-Alt + D           DuckDuckGo Search
-Alt + E           Open Selected Text in Editor
-Alt + G           Search in Game Databases
-Alt + S           Perplexity Search
-Alt + T           Open Selected Text in Notepad
-Alt + W           Open Selected URL in Browser
+
+Alt + A        →  WolframAlpha Search
+
+Alt + C        →  Currency Converter (Auto-detects amounts)
+
+Alt + D        →  DuckDuckGo Search
+
+Alt + E        →  Open Selected Text in Editor
+
+Alt + G        →  Search in Game Databases
+
+Alt + S        →  Perplexity Search
+
+Alt + T        →  Open Selected Text in Notepad
+
+Alt + W        →  Open Selected URL in Browser
+
+
+🔐 = Requires Administrator Privileges
 )"
     
     MyGui.Add("Text", "w450", helpText)

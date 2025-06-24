@@ -1,91 +1,244 @@
-# AHK-Tools (AutoHotkey v2)
+# AHK-V2-Tools
 
-A productivity script for Windows power users, providing custom hotkeys for quick access, automation, and workflow enhancements.
+A collection of productivity tools and utilities built with AutoHotkey v2.
+
+## ⚠️ Important Notice
+
+**AHK-Tools-Unified.ahk is DEPRECATED** and will be removed in a future version.
+
+**Please use `AHK-Tools-Plugins.ahk` instead** for the latest features and support.
 
 ## Features
-- Calculator, terminal, and system utilities shortcuts
-- Force quit apps, system power options, Wi-Fi/DNS tools
-- Numpad mode toggle (Win+F2)
-- Quick search: DuckDuckGo, Perplexity, WolframAlpha, game DBs
-- Currency converter with auto-detection of amounts and symbols
-- Open selected text in Notepad or editor
-- File integrity check, hourly chime, and more
+
+- **Plugin System**: Modular architecture allows for easy extension with plugins
+- **Settings Manager**: Comprehensive GUI for configuring all aspects of the application
+- **Currency Converter**: Convert between currencies with real-time exchange rates
+- **AutoCompletion**: Text expansion and autocompletion with customizable dictionary
+- **Email & Password Manager**: Generate secure credentials, masked emails, and usernames
+- **QR Code Reader**: Scan and decode QR codes from screen captures
+- **WiFi Reconnect**: Automated WiFi connection management
+- **Windows File Integrity**: System file verification and repair tools
+- **Customizable Hotkeys**: Global shortcuts for common tasks
+- **Modern UI**: Clean, consistent interface across all tools
 
 ## Requirements
-- **AutoHotkey v2.0+** (https://www.autohotkey.com/v2/)
-- **Python 3.x** (required for currency converter live exchange rates)
+
+- AutoHotkey v2.0 or newer
+- Windows 10/11
+
+## File Structure
+
+```
+AHK-V2-Tools/
+├── src/
+│   ├── AHK-Tools-Plugins.ahk    # Main application entry point
+│   ├── PluginSystem.ahk         # Core plugin system
+│   ├── SettingsManager.ahk      # Settings management GUI
+│   ├── settings.ini             # Main application settings
+│   ├── plugins/                 # Plugin .ahk files
+│   │   ├── AutoCompletion.ahk
+│   │   ├── CurrencyConverter.ahk
+│   │   ├── EmailPasswordManager.ahk
+│   │   ├── QRReader.ahk
+│   │   ├── WiFiReconnect.ahk
+│   │   └── WindowsFileIntegrity.ahk
+│   ├── data/                    # Plugin data and configuration
+│   │   └── plugins/
+│   │       ├── autocompletion_custom.ini    # Custom autocompletion entries
+│   │       └── emailpassword_settings.ini   # Email/password plugin settings
+│   ├── cache/                   # Temporary cache files
+│   │   └── currency_rates.json
+│   └── credentials/             # Saved credential files
+│       └── [timestamped files]
+├── README.md
+└── .gitignore
+```
 
 ## Installation
-1. Install AutoHotkey v2
-2. Install Python 3.x (for currency converter functionality)
-3. Clone/download this repo
-4. Run `src/AHK-Tools-Unified.ahk`
 
-## Add to Startup
-To run the script automatically on Windows startup:
-1. Press Win+R, type `shell:startup`, and press Enter.
-2. Copy a shortcut to `src/AHK-Tools-Unified.ahk` into the opened folder.
-3. To always run as administrator: Right-click the shortcut, choose Properties → Compatibility, and check 'Run this program as an administrator'.
+1. Download the latest release from the GitHub repository
+2. Extract the files to a location of your choice
+3. **Run `src/AHK-Tools-Plugins.ahk`** to start the application (NOT the unified version)
 
-**Tip:** You can also reload the script as administrator anytime from the tray icon menu (right-click the tray icon → 'Reload as Admin').
+## Migration from Unified Version
 
-## Category Recognition Legend
+If you were using `AHK-Tools-Unified.ahk`:
 
-<span style="color: #FF6B6B">**🔧 System Operations (Win Key)**</span> - System-level commands, some requiring elevated privileges  
-<span style="color: #45B7D1">**📝 Text & Search Operations (Alt Key)**</span> - Text processing and search functions
+1. **Stop the unified script** if it's running
+2. **Run `src/AHK-Tools-Plugins.ahk` instead**
+3. Your settings will be automatically imported
+4. The unified script will show a deprecation notice and offer to switch automatically
 
-## Main Shortcuts
-| Shortcut      | Action                                 |
-|--------------|----------------------------------------|
-| <span style="color: #FF6B6B">**Win+Del**</span>      | <span style="color: #4ECDC4">Suspend/Resume script</span>                  |
-| <span style="color: #FF6B6B">**Win+Enter** 🔐</span>    | <span style="color: #4ECDC4">Open Terminal as Administrator</span>         |
-| <span style="color: #FF6B6B">**Win+F1**</span>       | <span style="color: #4ECDC4">Show shortcuts help</span>                    |
-| <span style="color: #FF6B6B">**Win+F2**</span>       | <span style="color: #4ECDC4">Toggle Numpad Mode</span>                     |
-| <span style="color: #FF6B6B">**Win+F3** 🔐</span>       | <span style="color: #4ECDC4">Wi-Fi reconnect & flush DNS</span>            |
-| <span style="color: #FF6B6B">**Win+F4**</span>       | <span style="color: #4ECDC4">Toggle hourly chime</span>                    |
-| <span style="color: #FF6B6B">**Win+F12** 🔐</span>      | <span style="color: #4ECDC4">Check Windows File Integrity</span>           |
-| <span style="color: #FF6B6B">**Win+C**</span>        | <span style="color: #4ECDC4">Open Calculator</span>                        |
-| <span style="color: #FF6B6B">**Win+Q**</span>        | <span style="color: #4ECDC4">Force quit active app</span>                  |
-| <span style="color: #FF6B6B">**Win+X**</span>        | <span style="color: #4ECDC4">System Power Options</span>                   |
-| <span style="color: #45B7D1">**Alt+A**</span>        | <span style="color: #96CEB4">WolframAlpha Search</span>                    |
-| <span style="color: #45B7D1">**Alt+C**</span>        | <span style="color: #96CEB4">Currency Converter (Auto-detects amounts)</span> |
-| <span style="color: #45B7D1">**Alt+D**</span>        | <span style="color: #96CEB4">DuckDuckGo Search</span>                      |
-| <span style="color: #45B7D1">**Alt+E**</span>        | <span style="color: #96CEB4">Open Selected Text in Editor</span>           |
-| <span style="color: #45B7D1">**Alt+G**</span>        | <span style="color: #96CEB4">Search in Game Databases</span>               |
-| <span style="color: #45B7D1">**Alt+S**</span>        | <span style="color: #96CEB4">Perplexity Search</span>                      |
-| <span style="color: #45B7D1">**Alt+T**</span>        | <span style="color: #96CEB4">Open Selected Text in Notepad</span>          |
-| <span style="color: #45B7D1">**Alt+W**</span>        | <span style="color: #96CEB4">Open Selected URL in Browser</span>           |
+## Plugin System
 
-**🔐 = Requires Administrator Privileges**
+AHK-V2-Tools comes with a flexible plugin system that allows you to add new functionality:
 
-## Currency Converter (Alt+C)
+### Using Plugins
 
-The built-in currency converter provides real-time exchange rates with automatic text detection:
+1. Plugins are automatically loaded from the `src/plugins/` directory
+2. Access the Plugin Manager from the tray menu
+3. Enable or disable plugins as needed
+4. Configure plugin settings through the settings button
 
-### Features:
-- **Auto-detection**: Select any text with currency amounts (e.g., "$100", "€50", "₹500") and press Alt+C
-- **Symbol recognition**: Supports 50+ currency symbols including $, €, £, ¥, ₹, ₩, ₽, etc.
-- **Live rates**: Fetches current exchange rates from exchangerate-api.com (requires Python)
-- **190+ currencies**: Supports all major world currencies (USD, EUR, GBP, JPY, etc.)
-- **Smart parsing**: Recognizes formats like "$100", "100$", "USD 100", "100 USD"
-- **Fallback rates**: Works offline with hardcoded rates for major currency pairs (no Python needed)
+### Plugin Data Storage
 
-### Requirements:
-- **Python 3.x** installed and accessible via command line (`python`, `python3`, or `py` commands)
-- Internet connection for live exchange rates
-- Falls back to offline rates if Python is not available
+- Plugin configuration files are stored in `src/data/plugins/`
+- Each plugin can have its own settings file (e.g., `emailpassword_settings.ini`)
+- Custom user data files are automatically created and managed
+- Cache files are stored in `src/cache/` for temporary data
+- AutoCompletion uses built-in entries plus custom entries from `autocompletion_custom.ini`
 
-### Usage:
-1. **With selected text**: Select any amount with currency symbol → Press Alt+C → Automatic conversion
-2. **Manual entry**: Press Alt+C → Enter amount and select currencies → Real-time conversion
-3. **Currency swap**: Use the "Swap" button to quickly reverse the conversion direction
+### Creating Plugins
 
-### Supported formats:
-- Symbol before: `$100`, `€50`, `£25`, `¥1000`, `₹500`
-- Symbol after: `100$`, `50€`, `25£`, `1000¥`, `500₹`  
-- With currency codes: `USD 100`, `100 USD`, `EUR 50`, `50 EUR`
-- Plain numbers: `100` (defaults to USD)
+To create a custom plugin:
 
----
-MIT License
+1. Create a new .ahk file in the `src/plugins/` directory
+2. Extend the base `Plugin` class
+3. Implement the required methods (Initialize, Enable, Disable)
+4. Store plugin data in `A_ScriptDir "\data\plugins\yourplugin_settings.ini"`
+5. Add your custom functionality
+
+## Settings Manager
+
+The Settings Manager provides a comprehensive GUI for configuring all aspects of AHK-V2-Tools:
+
+### Features
+
+- **General Settings**: Startup options, appearance, language, and theme
+- **Plugin Management**: Enable/disable plugins, configure plugin settings
+- **Hotkey Configuration**: Customize global hotkeys and tooltips
+- **AutoCompletion**: Configure text expansion and dictionary management
+- **Text Replacement**: Manage text replacement rules and patterns
+- **Performance**: Optimize memory usage, CPU usage, and caching
+- **Security**: Configure admin requirements, logging, and encryption
+
+### Access Methods
+
+1. **Hotkey**: Press `Win + F5` to open the Settings Manager
+2. **Tray Menu**: Right-click the tray icon and select "Settings"
+3. **Plugin Manager**: Access individual plugin settings from the Plugin Manager
+
+### Configuration Tabs
+
+- **General**: Basic application settings and appearance
+- **Plugins**: Enable/disable plugins and access plugin-specific settings
+- **Hotkeys**: Configure global hotkeys and their behavior
+- **Autocompletion**: Manage text expansion dictionary and settings
+- **Text Replace**: Configure text replacement rules and patterns
+- **Performance**: Optimize application performance and resource usage
+- **Security**: Configure security settings and access controls
+
+Example plugin template:
+
+```autohotkey
+#Requires AutoHotkey v2.0-*
+
+class YourPluginNamePlugin extends Plugin {
+    ; Plugin metadata
+    static Name := "Your Plugin Name"
+    static Description := "Description of your plugin"
+    static Version := "1.0.0"
+    static Author := "Your Name"
+    
+    ; Initialize the plugin
+    Initialize() {
+        ; Register hotkeys, create GUIs, etc.
+        ; Use A_ScriptDir "\data\plugins\yourplugin_settings.ini" for data storage
+        return true
+    }
+    
+    ; Enable the plugin
+    Enable() {
+        ; Enable functionality
+        this.Enabled := true
+        return true
+    }
+    
+    ; Disable the plugin
+    Disable() {
+        ; Disable functionality
+        this.Enabled := false
+        return true
+    }
+    
+    ; Load plugin settings
+    LoadSettings() {
+        settingsFile := A_ScriptDir "\data\plugins\yourplugin_settings.ini"
+        ; Load your settings from the unified data location
+    }
+    
+    ; Save plugin settings
+    SaveSettings() {
+        settingsFile := A_ScriptDir "\data\plugins\yourplugin_settings.ini"
+        ; Save your settings to the unified data location
+    }
+    
+    ; Add your custom methods here
+}
+```
+
+## Default Hotkeys
+
+| Hotkey | Function |
+|--------|----------|
+| Win + F1 | Show help dialog |
+| Win + F5 | Open Settings Manager |
+| Win + Del | Suspend/Resume script |
+| Win + Enter | Open Terminal as Administrator |
+| Alt + C | Currency Converter (from Currency Converter plugin) |
+| Ctrl + Alt + A | AutoCompletion Manager (from AutoCompletion plugin) |
+
+## Plugin Features
+
+### AutoCompletion Plugin
+- Text expansion with customizable triggers
+- Built-in static entries for common abbreviations
+- Custom user-defined entries via settings interface
+- Simple and efficient text replacement system
+
+### Currency Converter Plugin
+- Real-time exchange rates
+- Multiple currency support
+- Configurable update intervals
+- Cached rates for offline use
+
+### Email & Password Manager Plugin
+- Gmail+ email masking
+- Temporary email integration
+- Username generation with templates
+- Secure password generation
+- Bitwarden CLI integration
+- Credential history tracking
+
+### QR Reader Plugin
+- Screen capture QR code scanning
+- Multiple QR detection engines
+- Automatic clipboard copy
+- Real-time scanning mode
+
+### WiFi Reconnect Plugin
+- Automatic WiFi connection monitoring
+- Connection recovery on failures
+- Configurable retry intervals
+- Network status notifications
+
+### Windows File Integrity Plugin
+- System file verification (SFC)
+- DISM health checking
+- Automated repair workflows
+- Administrative privilege handling
+
+## License
+
+MIT License - See LICENSE file for details.
+
+## Contributing
+
+Contributions are welcome! Please feel free to submit a Pull Request.
+
+1. Fork the repository
+2. Create your feature branch (`git checkout -b feature/amazing-feature`)
+3. Commit your changes (`git commit -m 'Add some amazing feature'`)
+4. Push to the branch (`git push origin feature/amazing-feature`)
+5. Open a Pull Request
 

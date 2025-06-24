@@ -9,4 +9,34 @@ Thumbs.db
 # Editor files
 .vscode/
 *.sublime-workspace
-*.sublime-project 
+*.sublime-project
+
+# Debug and temporary files
+debug.log
+activity.log
+*.tmp
+*.bak
+*~
+autocompletion_*.txt
+
+# Personal files and shortcuts
+*.lnk
+Projects.lnk
+
+# User-generated data
+src/credentials/
+credentials/
+
+# Auto-generated files
+settings.ini.bak
+
+# Plugin data and user configurations
+data/plugins/*.ini
+data/plugins/*.txt
+data/plugins/*.json
+data/plugins/*.log
+data/cache/
+src/cache/
+
+# Nested duplicate directories
+src/src/ 

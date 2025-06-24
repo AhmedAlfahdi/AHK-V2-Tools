@@ -877,10 +877,15 @@ class SettingsManager {
             selectedRow := listView.GetNext()
             pluginName := listView.GetText(selectedRow, 1)
             
-            if (this.PluginManager && this.PluginManager.EnablePlugin(pluginName)) {
-                listView.Modify(selectedRow, , , , "Enabled")
-                listView.Modify(selectedRow, "Check")
-                        ShowMouseTooltip("Plugin '" pluginName "' enabled", 1000)
+            if (this.PluginManager && this.PluginManager.Plugins.Has(pluginName)) {
+                ; Enable the plugin directly
+                this.PluginManager.Plugins[pluginName].Enable()
+                this.PluginManager.SavePluginStates()
+                
+                ; Automatically refresh the plugin list
+                this.RefreshPluginList(listView)
+                
+                ShowMouseTooltip("Plugin '" pluginName "' enabled successfully", 2000)
             }
         }
     }
@@ -890,10 +895,15 @@ class SettingsManager {
             selectedRow := listView.GetNext()
             pluginName := listView.GetText(selectedRow, 1)
             
-            if (this.PluginManager && this.PluginManager.DisablePlugin(pluginName)) {
-                listView.Modify(selectedRow, , , , "Disabled")
-                listView.Modify(selectedRow, "-Check")
-                        ShowMouseTooltip("Plugin '" pluginName "' disabled", 1000)
+            if (this.PluginManager && this.PluginManager.Plugins.Has(pluginName)) {
+                ; Disable the plugin directly
+                this.PluginManager.Plugins[pluginName].Disable()
+                this.PluginManager.SavePluginStates()
+                
+                ; Automatically refresh the plugin list
+                this.RefreshPluginList(listView)
+                
+                ShowMouseTooltip("Plugin '" pluginName "' disabled successfully", 2000)
             }
         }
     }
@@ -910,10 +920,22 @@ class SettingsManager {
     }
     
     RefreshPluginList(listView) {
+        ; Remember the currently selected plugin
+        selectedPlugin := ""
+        if listView.GetNext() {
+            selectedRow := listView.GetNext()
+            selectedPlugin := listView.GetText(selectedRow, 1)
+        }
+        
+        ; Clear and rebuild the list
         listView.Delete()
+        
+        rowToSelect := 0
+        currentRow := 0
         
         if (this.PluginManager) {
             for pluginName, plugin in this.PluginManager.Plugins {
+                currentRow++
                 status := plugin.Enabled ? "Enabled" : "Disabled"
                 ; Access static properties correctly
                 pluginClass := Type(plugin)
@@ -925,7 +947,17 @@ class SettingsManager {
                     description := "No description available"
                 }
                 listView.Add(plugin.Enabled ? "Check" : "", pluginName, version, status, description)
+                
+                ; Remember which row to reselect
+                if (pluginName = selectedPlugin) {
+                    rowToSelect := currentRow
+                }
             }
+        }
+        
+        ; Reselect the previously selected plugin if it still exists
+        if (rowToSelect > 0) {
+            listView.Modify(rowToSelect, "Select Focus")
         }
         
         ShowMouseTooltip("Plugin list refreshed", 1000)

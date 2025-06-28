@@ -292,7 +292,7 @@ class EmailPasswordManagerPlugin {
     
     ; Main interface
     ShowMainInterface() {
-        mainGui := Gui("+Resize", "Email & Password Manager v" EmailPasswordManagerPlugin.Version)
+        mainGui := Gui("+AlwaysOnTop +Resize", "Email & Password Manager v" EmailPasswordManagerPlugin.Version)
         mainGui.SetFont("s9", "Segoe UI")
         
         ; Tabs
@@ -396,10 +396,6 @@ class EmailPasswordManagerPlugin {
         
         generatePasswordBtn := mainGui.Add("Button", "x400 y85 w100 h25", "Generate")
         strengthBtn := mainGui.Add("Button", "x510 y85 w100 h25", "Check Strength")
-        
-        ; DEBUG BUTTON FOR TESTING CHECKBOXES
-        testDebugBtn := mainGui.Add("Button", "x620 y85 w70 h25", "🐛 DEBUG")
-        testDebugBtn.OnEvent("Click", (*) => this.DebugCheckboxValues(uppercaseCheck, lowercaseCheck, numbersCheck, symbolsCheck))
         
         mainGui.Add("Text", "x30 y135", "Result:")
         passwordResult := mainGui.Add("Edit", "x120 y133 w400 ReadOnly")
@@ -728,45 +724,432 @@ class EmailPasswordManagerPlugin {
         }
     }
     
-    ; Check password strength
+    ; Check password strength with detailed analysis
     CheckPasswordStrength(password, strengthControl) {
         if (!password) {
             strengthControl.Text := "No password"
             return
         }
         
+        ; Calculate and display basic strength
         strength := this.CalculatePasswordStrength(password)
         strengthControl.Text := strength
+        
+        ; Show detailed analysis popup
+        this.ShowDetailedPasswordAnalysis(password)
     }
     
-    ; Calculate password strength
+    ; Show detailed password strength analysis in a popup
+    ShowDetailedPasswordAnalysis(password) {
+        if (!password) {
+            return
+        }
+        
+        ; Perform detailed analysis
+        length := StrLen(password)
+        entropy := this.CalculateEntropy(password)
+        
+        ; Build detailed report
+        report := "🔒 DETAILED PASSWORD STRENGTH ANALYSIS`n"
+        report .= "=" . StrReplace(Format("{:60s}", ""), " ", "=") . "`n`n"
+        
+        ; Basic info
+        report .= "📋 BASIC INFORMATION:`n"
+        report .= "• Password length: " . length . " characters`n"
+        report .= "• Entropy: " . entropy . " bits`n"
+        report .= "• Estimated crack time: " . this.EstimateCrackTime(password) . "`n`n"
+        
+        ; Character analysis
+        report .= "📊 CHARACTER ANALYSIS:`n"
+        hasLower := RegExMatch(password, "[a-z]")
+        hasUpper := RegExMatch(password, "[A-Z]")
+        hasNumbers := RegExMatch(password, "[0-9]")
+        hasSymbols := RegExMatch(password, "[!@#$%^&*()_+\-=\[\]{}|;':,./<>?`"~]")
+        
+        report .= "• Lowercase letters: " . (hasLower ? "✅ Present" : "❌ Missing") . "`n"
+        report .= "• Uppercase letters: " . (hasUpper ? "✅ Present" : "❌ Missing") . "`n"
+        report .= "• Numbers: " . (hasNumbers ? "✅ Present" : "❌ Missing") . "`n"
+        report .= "• Special symbols: " . (hasSymbols ? "✅ Present" : "❌ Missing") . "`n`n"
+        
+        ; Security issues
+        issues := []
+        if (length < 12) issues.Push("Password is shorter than recommended 12+ characters")
+        if (this.HasSequentialChars(password)) issues.Push("Contains sequential characters (abc, 123, etc.)")
+        if (this.HasKeyboardPattern(password)) issues.Push("Contains keyboard patterns (qwerty, etc.)")
+        if (this.HasCommonNumberPatterns(password)) issues.Push("Contains common number patterns")
+        if (this.ContainsCommonWords(password)) issues.Push("Contains common dictionary words")
+        if (this.CountRepeatedChars(password) > length * 0.2) issues.Push("Has too many repeated characters")
+        
+        if (issues.Length > 0) {
+            report .= "⚠️ SECURITY ISSUES:`n"
+            for issue in issues {
+                report .= "• " . issue . "`n"
+            }
+            report .= "`n"
+        }
+        
+        ; Recommendations
+        report .= "💡 RECOMMENDATIONS:`n"
+        if (length < 12) report .= "• Use at least 12 characters for better security`n"
+        if (!hasLower) report .= "• Add lowercase letters (a-z)`n"
+        if (!hasUpper) report .= "• Add uppercase letters (A-Z)`n"
+        if (!hasNumbers) report .= "• Add numbers (0-9)`n"
+        if (!hasSymbols) report .= "• Add special symbols (!@#$%^&*)`n"
+        if (this.HasSequentialChars(password)) report .= "• Avoid sequential characters`n"
+        if (this.HasKeyboardPattern(password)) report .= "• Avoid keyboard patterns`n"
+        if (this.ContainsCommonWords(password)) report .= "• Avoid common dictionary words`n"
+        
+        ; If no issues, provide positive feedback
+        if (issues.Length = 0 && length >= 12) {
+            report .= "✅ Your password follows security best practices!`n"
+            report .= "• Consider using a unique password for each account`n"
+            report .= "• Store securely in a password manager`n"
+        }
+        
+        ; Show in a scrollable window
+        analysisGui := Gui("+AlwaysOnTop +Resize", "Password Strength Analysis")
+        analysisGui.SetFont("s9", "Consolas")
+        analysisGui.BackColor := 0xF8F9FA
+        
+        ; Header
+        headerText := analysisGui.Add("Text", "x10 y10 w580 Center", "🔐 Password Security Analysis")
+        headerText.SetFont("s12 Bold", "Segoe UI")
+        
+        ; Analysis text
+        analysisEdit := analysisGui.Add("Edit", "x10 y40 w580 h400 ReadOnly VScroll", report)
+        analysisEdit.SetFont("s9", "Consolas")
+        
+        ; Buttons
+        generateNewBtn := analysisGui.Add("Button", "x10 y450 w140 h30", "Generate New Password")
+        generateNewBtn.OnEvent("Click", (*) => this.GenerateStrongPassword(analysisGui))
+        
+        copyReportBtn := analysisGui.Add("Button", "x160 y450 w120 h30", "Copy Report")
+        copyReportBtn.OnEvent("Click", (*) => (A_Clipboard := report, ShowMouseTooltip("Analysis copied to clipboard", 2000)))
+        
+        closeBtn := analysisGui.Add("Button", "x490 y450 w100 h30", "Close")
+        closeBtn.OnEvent("Click", (*) => analysisGui.Destroy())
+        
+        analysisGui.OnEvent("Close", (*) => analysisGui.Destroy())
+        analysisGui.OnEvent("Escape", (*) => analysisGui.Destroy())
+        
+        analysisGui.Show("w600 h490")
+    }
+    
+    ; Estimate password crack time
+    EstimateCrackTime(password) {
+        entropy := this.CalculateEntropy(password)
+        
+        ; Assuming 1 billion guesses per second (modern hardware)
+        guessesPerSecond := 1000000000
+        
+        ; Total possible combinations = 2^entropy
+        ; Average time to crack = (2^entropy) / 2 / guesses_per_second
+        avgSeconds := (2 ** (entropy - 1)) / guessesPerSecond
+        
+        ; Convert to human readable time
+        if (avgSeconds < 60) {
+            return "Less than 1 minute"
+        } else if (avgSeconds < 3600) {
+            return Round(avgSeconds / 60) . " minutes"
+        } else if (avgSeconds < 86400) {
+            return Round(avgSeconds / 3600) . " hours"
+        } else if (avgSeconds < 31536000) {
+            return Round(avgSeconds / 86400) . " days"
+        } else if (avgSeconds < 31536000000) {
+            return Round(avgSeconds / 31536000) . " years"
+        } else if (avgSeconds < 31536000000000) {
+            return Round(avgSeconds / 31536000000) . " thousand years"
+        } else if (avgSeconds < 31536000000000000) {
+            return Round(avgSeconds / 31536000000000) . " million years"
+        } else {
+            return "Billions of years"
+        }
+    }
+    
+    ; Generate a strong password suggestion
+    GenerateStrongPassword(parentGui) {
+        ; Generate a strong 16-character password
+        strongPassword := this.GenerateRandomString(16, true, true, true, true)
+        
+        ; Show the result
+        resultGui := Gui("+Owner" parentGui.Hwnd " +AlwaysOnTop", "Strong Password Generated")
+        resultGui.SetFont("s10", "Segoe UI")
+        
+        resultGui.Add("Text", "x10 y10 w380", "Generated strong password:")
+        passwordEdit := resultGui.Add("Edit", "x10 y30 w300 ReadOnly", strongPassword)
+        passwordEdit.SetFont("s11 Bold", "Consolas")
+        
+        copyBtn := resultGui.Add("Button", "x320 y29 w70 h23", "Copy")
+        copyBtn.OnEvent("Click", (*) => (A_Clipboard := strongPassword, ShowMouseTooltip("Password copied!", 2000), resultGui.Destroy()))
+        
+        ; Show strength
+        strength := this.CalculatePasswordStrength(strongPassword)
+        resultGui.Add("Text", "x10 y60 w380", "Strength: " . strength)
+        
+        closeBtn := resultGui.Add("Button", "x320 y90 w70 h25", "Close")
+        closeBtn.OnEvent("Click", (*) => resultGui.Destroy())
+        
+        resultGui.OnEvent("Close", (*) => resultGui.Destroy())
+        resultGui.Show("w400 h125")
+    }
+    
+    ; Calculate comprehensive password strength with detailed analysis
     CalculatePasswordStrength(password) {
         if (!password) {
             return "No password"
         }
         
-        score := 0
         length := StrLen(password)
+        score := 0
+        issues := []
+        bonuses := []
         
-        ; Length scoring
-        if (length >= 8) score += 1
-        if (length >= 12) score += 1
-        if (length >= 16) score += 1
+        ; === LENGTH ANALYSIS ===
+        if (length < 8) {
+            score -= 20
+            issues.Push("Too short (minimum 8 characters)")
+        } else if (length >= 8) {
+            score += 10
+            if (length >= 12) {
+                score += 10
+                bonuses.Push("Good length (12+ chars)")
+                if (length >= 16) {
+                    score += 10
+                    bonuses.Push("Excellent length (16+ chars)")
+                }
+            }
+        }
         
-        ; Character variety scoring
-        if (RegExMatch(password, "[a-z]")) score += 1
-        if (RegExMatch(password, "[A-Z]")) score += 1
-        if (RegExMatch(password, "[0-9]")) score += 1
-        if (RegExMatch(password, "[!@#$%^&*()_+\-=\[\]{}|;':,./<>?]")) score += 1
+        ; === CHARACTER VARIETY ANALYSIS ===
+        charTypes := 0
         
-        ; Return strength level
-        if (score <= 2)
-            return "Weak"
-        if (score <= 4)
-            return "Fair"
-        if (score <= 6)
-            return "Good"
-        return "Strong"
+        ; Lowercase letters
+        if (RegExMatch(password, "[a-z]")) {
+            score += 5
+            charTypes++
+        } else {
+            issues.Push("Missing lowercase letters")
+        }
+        
+        ; Uppercase letters
+        if (RegExMatch(password, "[A-Z]")) {
+            score += 5
+            charTypes++
+        } else {
+            issues.Push("Missing uppercase letters")
+        }
+        
+        ; Numbers
+        if (RegExMatch(password, "[0-9]")) {
+            score += 5
+            charTypes++
+        } else {
+            issues.Push("Missing numbers")
+        }
+        
+        ; Special symbols
+        if (RegExMatch(password, "[!@#$%^&*()_+\-=\[\]{}|;':,./<>?`"~]")) {
+            score += 10
+            charTypes++
+            bonuses.Push("Contains special symbols")
+        } else {
+            issues.Push("Missing special symbols")
+        }
+        
+        ; Bonus for high character variety
+        if (charTypes >= 4) {
+            score += 15
+            bonuses.Push("Excellent character variety")
+        } else if (charTypes >= 3) {
+            score += 5
+            bonuses.Push("Good character variety")
+        }
+        
+        ; === PATTERN ANALYSIS ===
+        ; Check for sequential patterns
+        if (this.HasSequentialChars(password)) {
+            score -= 10
+            issues.Push("Contains sequential characters")
+        }
+        
+        ; Check for repeated characters
+        repeatCount := this.CountRepeatedChars(password)
+        if (repeatCount > length * 0.3) {
+            score -= 15
+            issues.Push("Too many repeated characters")
+        } else if (repeatCount > length * 0.2) {
+            score -= 5
+            issues.Push("Some repeated characters")
+        }
+        
+        ; Check for keyboard patterns
+        if (this.HasKeyboardPattern(password)) {
+            score -= 15
+            issues.Push("Contains keyboard patterns")
+        }
+        
+        ; Check for common number patterns
+        if (this.HasCommonNumberPatterns(password)) {
+            score -= 10
+            issues.Push("Contains common number patterns")
+        }
+        
+        ; === DICTIONARY ANALYSIS ===
+        if (this.ContainsCommonWords(password)) {
+            score -= 20
+            issues.Push("Contains common dictionary words")
+        }
+        
+        ; === ENTROPY CALCULATION ===
+        entropy := this.CalculateEntropy(password)
+        if (entropy >= 60) {
+            score += 10
+            bonuses.Push("High entropy (randomness)")
+        } else if (entropy >= 40) {
+            score += 5
+        } else if (entropy < 25) {
+            score -= 10
+            issues.Push("Low entropy (predictable)")
+        }
+        
+        ; === DETERMINE FINAL STRENGTH ===
+        ; Ensure score doesn't go below 0
+        score := Max(0, score)
+        
+        strengthLevel := ""
+        strengthColor := ""
+        
+        if (score >= 80) {
+            strengthLevel := "Excellent"
+            strengthColor := "🟢"
+        } else if (score >= 65) {
+            strengthLevel := "Strong"
+            strengthColor := "🔵"
+        } else if (score >= 45) {
+            strengthLevel := "Good"
+            strengthColor := "🟡"
+        } else if (score >= 25) {
+            strengthLevel := "Fair"
+            strengthColor := "🟠"
+        } else {
+            strengthLevel := "Weak"
+            strengthColor := "🔴"
+        }
+        
+        ; Create detailed result
+        result := strengthColor . " " . strengthLevel . " (" . score . "/100)"
+        
+        ; Add top issues and bonuses for context
+        if (issues.Length > 0) {
+            result .= " | Issues: " . issues[1]
+            if (issues.Length > 1)
+                result .= ", " . issues[2]
+        }
+        
+        if (bonuses.Length > 0 && score >= 45) {
+            result .= " | ✓ " . bonuses[1]
+        }
+        
+        return result
+    }
+    
+    ; Check for sequential characters (abc, 123, etc.)
+    HasSequentialChars(password) {
+        sequences := ["abc", "bcd", "cde", "def", "efg", "fgh", "ghi", "hij", "ijk", "jkl", "klm", "lmn", "mno", "nop", "opq", "pqr", "qrs", "rst", "stu", "tuv", "uvw", "vwx", "wxy", "xyz",
+                     "123", "234", "345", "456", "567", "678", "789", "890"]
+        
+        lowerPassword := StrLower(password)
+        for seq in sequences {
+            if (InStr(lowerPassword, seq) || InStr(lowerPassword, this.ReverseString(seq))) {
+                return true
+            }
+        }
+        return false
+    }
+    
+    ; Count repeated characters
+    CountRepeatedChars(password) {
+        charCount := Map()
+        repeated := 0
+        
+        Loop Parse, password {
+            char := A_LoopField
+            if (charCount.Has(char)) {
+                charCount[char]++
+                repeated++
+            } else {
+                charCount[char] := 1
+            }
+        }
+        return repeated
+    }
+    
+    ; Check for keyboard patterns
+    HasKeyboardPattern(password) {
+        patterns := ["qwerty", "qwertyui", "asdf", "asdfgh", "zxcv", "zxcvb", "1234", "12345", "1234567890"]
+        lowerPassword := StrLower(password)
+        
+        for pattern in patterns {
+            if (InStr(lowerPassword, pattern) || InStr(lowerPassword, this.ReverseString(pattern))) {
+                return true
+            }
+        }
+        return false
+    }
+    
+    ; Check for common number patterns
+    HasCommonNumberPatterns(password) {
+        patterns := ["1234", "4321", "1111", "2222", "3333", "4444", "5555", "6666", "7777", "8888", "9999", "0000", 
+                    "1212", "2121", "1010", "2020", "2021", "2022", "2023", "2024", "2025"]
+        
+        for pattern in patterns {
+            if (InStr(password, pattern)) {
+                return true
+            }
+        }
+        return false
+    }
+    
+    ; Check for common dictionary words
+    ContainsCommonWords(password) {
+        commonWords := ["password", "admin", "user", "login", "welcome", "hello", "world", "test", "demo", "sample",
+                       "email", "account", "secure", "secret", "private", "public", "master", "guest", "default",
+                       "temp", "temporary", "pass", "word", "code", "key", "access", "system", "database"]
+        
+        lowerPassword := StrLower(password)
+        for word in commonWords {
+            if (InStr(lowerPassword, word)) {
+                return true
+            }
+        }
+        return false
+    }
+    
+    ; Calculate password entropy (measure of randomness)
+    CalculateEntropy(password) {
+        ; Character set size estimation
+        charSetSize := 0
+        
+        if (RegExMatch(password, "[a-z]")) charSetSize += 26
+        if (RegExMatch(password, "[A-Z]")) charSetSize += 26  
+        if (RegExMatch(password, "[0-9]")) charSetSize += 10
+        if (RegExMatch(password, "[!@#$%^&*()_+\-=\[\]{}|;':,./<>?`"~]")) charSetSize += 33
+        
+        ; Entropy = log2(charSetSize^length) = length * log2(charSetSize)
+        if (charSetSize > 0) {
+            entropy := StrLen(password) * (Ln(charSetSize) / Ln(2))
+            return Round(entropy, 1)
+        }
+        return 0
+    }
+    
+    ; Helper function to reverse a string
+    ReverseString(str) {
+        reversed := ""
+        Loop Parse, str {
+            reversed := A_LoopField . reversed
+        }
+        return reversed
     }
     
     ; Generate random string with explicit character type control - SIMPLIFIED VERSION
@@ -1543,7 +1926,14 @@ class EmailPasswordManagerPlugin {
             ; Test the found installation
             SetTimer(() => this.TestBitwardenConnection(), -1000)
         } else {
-            result := MsgBox("❌ No working Bitwarden CLI found.`n`nTried locations:`n• " StrReplace(commonPaths.Join("`n• "), "C:\Users\" A_UserName, "C:\Users\{username}") "`n`nWould you like to:`n• Install automatically (recommended)`n• Browse for manual path`n• View setup guide", "Auto-Detect Failed", "YesNoCancel Icon?")
+            ; Manually join the commonPaths array since AutoHotkey v2 doesn't have Array.Join()
+            pathsText := ""
+            for path in commonPaths {
+                pathsText .= (pathsText ? "`n• " : "") . path
+            }
+            pathsText := StrReplace(pathsText, "C:\Users\" A_UserName, "C:\Users\{username}")
+            
+            result := MsgBox("❌ No working Bitwarden CLI found.`n`nTried locations:`n• " pathsText "`n`nWould you like to:`n• Install automatically (recommended)`n• Browse for manual path`n• View setup guide", "Auto-Detect Failed", "YesNoCancel Icon?")
             
             if (result = "Yes") {
                 this.AutoInstallBitwardenCLI(pathEdit)

@@ -18,7 +18,7 @@ AHK-V2-Tools/
     │   ├── 📄 EmailPasswordManager.ahk # Email/password management plugin
     │   ├── 📄 QRReader.ahk         # QR code reading plugin
     │   ├── 📄 WiFiReconnect.ahk    # Wi-Fi reconnection plugin
-    │   └── 📄 WindowsFileIntegrity.ahk # File integrity checking plugin
+    
     ├── 📁 data/                    # User data storage
     │   └── 📁 plugins/             # Plugin-specific data files
     │       ├── 📄 autocompletion_custom.ini    # Custom autocompletion entries
@@ -63,7 +63,7 @@ Each plugin is a self-contained `.ahk` file in the `plugins/` directory that imp
 | **EmailPasswordManager** | Generate emails, usernames, passwords | No |
 | **QRReader** | Read QR codes from screen/clipboard | No |
 | **WiFiReconnect** | Wi-Fi troubleshooting and DNS flush | Yes |
-| **WindowsFileIntegrity** | DISM and SFC system file checks | Yes |
+
 
 ## 📁 File Types & Purposes
 
@@ -89,7 +89,7 @@ Each plugin is a self-contained `.ahk` file in the `plugins/` directory that imp
 ### Admin Privileges
 Some plugins require administrator privileges:
 - **Wi-Fi Reconnect**: Network interface control
-- **File Integrity**: System file verification (DISM/SFC)
+
 
 ## 🛠️ Development
 

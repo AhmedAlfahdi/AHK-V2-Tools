@@ -1,7 +1,7 @@
 #Requires AutoHotkey v2.0-*
 
 ; QR Reader Plugin for AHK Tools
-; This plugin captures screenshots and uses jsQR library to read QR codes
+; This plugin captures screenshots and uses Python libraries to read QR codes
 
 class QRReaderPlugin extends Plugin {
     ; Plugin metadata
@@ -13,8 +13,6 @@ class QRReaderPlugin extends Plugin {
     ; Plugin settings
     Settings := {
         enabled: true,
-        nodeJsPath: "",
-        jsQRScriptPath: "",
         tempImagePath: A_Temp "\qr_capture.png",
         copyToClipboard: true,
         playSoundOnDetection: true
@@ -43,21 +41,20 @@ class QRReaderPlugin extends Plugin {
             ; Handle hotkey registration errors
         }
         
-        ; Pre-cache engines in background for faster GUI loading (delayed to reduce startup CPU spike)
-        SetTimer(() => this.PreCacheEngines(), -10000)  ; Cache after 10 seconds to reduce startup impact
+        ; Engine caching removed from startup - will only check when GUI opens or user requests
         
         return true
     }
     
-    ; Pre-cache engines in background
-    PreCacheEngines() {
+    ; Check engines only when explicitly requested (GUI open or manual test)
+    CheckEnginesOnDemand() {
         try {
-            if (!this.HasProp("cachedEngines")) {
-                this.CacheAvailableEngines()
-            }
-        } catch {
-            ; If pre-caching fails, engines will be checked when needed
+            this.CacheAvailableEngines()
+        } catch as e {
+            ; If engine check fails, return error status
+            return "Engine check failed: " e.Message
         }
+        return "Engines checked successfully"
     }
     
     ; Enable the plugin
@@ -81,11 +78,27 @@ class QRReaderPlugin extends Plugin {
             Hotkey "^!q", "Off"     ; Ctrl+Alt+Q
             Hotkey "^!w", "Off"     ; Ctrl+Alt+W
             this.Enabled := false
+            
+            ; Clear all performance-related flags and timers
+            this.CleanupPerformanceResources()
         } catch as e {
             MsgBox("Error disabling QR Reader plugin: " e.Message, "Plugin Error", "Iconx")
             return false
         }
         return true
+    }
+    
+    ; Cleanup performance resources to prevent memory leaks
+    CleanupPerformanceResources() {
+        ; Clear timer flags  
+        this.DeleteProp("cachingInProgress")
+        this.DeleteProp("cleanupTimerActive")
+        
+        ; Clear cleanup queue
+        this.DeleteProp("cleanupQueue")
+        
+        ; Clear cached data
+        this.DeleteProp("cachedEngines")
     }
     
     ; Setup Python environment for QR reading (lightweight during startup)
@@ -157,96 +170,14 @@ class QRReaderPlugin extends Plugin {
         return "python"  ; Default fallback
     }
     
-    ; Legacy Node.js script creation (kept for compatibility but not used)
-    CreateQRProcessorScript() {
-        scriptPath := A_ScriptDir "\qr_processor.js"
-        this.Settings.jsQRScriptPath := scriptPath
-        
-        nodeScript := "const fs = require('fs');" . "`n"
-        nodeScript .= "const path = require('path');" . "`n"
-        nodeScript .= "`n"
-        nodeScript .= "let jsQR;" . "`n"
-        nodeScript .= "try {" . "`n"
-        nodeScript .= "    jsQR = require('jsqr');" . "`n"
-        nodeScript .= "} catch (error) {" . "`n"
-        nodeScript .= "    console.error('jsQR not installed. Please run: npm install jsqr');" . "`n"
-        nodeScript .= "    process.exit(1);" . "`n"
-        nodeScript .= "}" . "`n`n"
-        nodeScript .= "async function processQRImage(imagePath) {" . "`n"
-        nodeScript .= "    try {" . "`n"
-        nodeScript .= "        // Use jimp for image processing instead of canvas" . "`n"
-        nodeScript .= "        const Jimp = require('jimp');" . "`n"
-        nodeScript .= "        const image = await Jimp.read(imagePath);" . "`n"
-        nodeScript .= "        const imageData = {" . "`n"
-        nodeScript .= "            data: new Uint8ClampedArray(image.bitmap.data)," . "`n"
-        nodeScript .= "            width: image.bitmap.width," . "`n"
-        nodeScript .= "            height: image.bitmap.height" . "`n"
-        nodeScript .= "        };" . "`n`n"
-        nodeScript .= "        const code = jsQR(imageData.data, imageData.width, imageData.height, {" . "`n"
-        nodeScript .= "            inversionAttempts: 'attemptBoth'" . "`n"
-        nodeScript .= "        });" . "`n`n"
-        nodeScript .= "        if (code) {" . "`n"
-        nodeScript .= "            const result = {" . "`n"
-        nodeScript .= "                success: true," . "`n"
-        nodeScript .= "                data: code.data," . "`n"
-        nodeScript .= "                location: code.location," . "`n"
-        nodeScript .= "                binaryData: Array.from(code.binaryData)," . "`n"
-        nodeScript .= "                version: code.version" . "`n"
-        nodeScript .= "            };" . "`n"
-        nodeScript .= "            console.log(JSON.stringify(result));" . "`n"
-        nodeScript .= "        } else {" . "`n"
-        nodeScript .= "            console.log(JSON.stringify({ success: false, error: 'No QR code found' }));" . "`n"
-        nodeScript .= "        }" . "`n"
-        nodeScript .= "    } catch (error) {" . "`n"
-        nodeScript .= "        // Fallback: if jimp fails, try simple file reading approach" . "`n"
-        nodeScript .= "        console.log(JSON.stringify({ success: false, error: 'jsQR requires Python engines for this image type' }));" . "`n"
-        nodeScript .= "    }" . "`n"
-        nodeScript .= "}" . "`n`n"
-        nodeScript .= "const imagePath = process.argv[2];" . "`n"
-        nodeScript .= "if (!imagePath) {" . "`n"
-        nodeScript .= "    console.log(JSON.stringify({ success: false, error: 'No image path provided' }));" . "`n"
-        nodeScript .= "    process.exit(1);" . "`n"
-        nodeScript .= "}" . "`n`n"
-        nodeScript .= "processQRImage(imagePath);"
-        
-        try {
-            FileDelete scriptPath
-            FileAppend nodeScript, scriptPath
-        } catch as e {
-            ; Script creation failed
-        }
-    }
-    
-    ; Find Node.js installation
-    FindNodeJsPath() {
-        nodePaths := [
-            "node",
-            "C:\Program Files\nodejs\node.exe", 
-            "C:\Program Files (x86)\nodejs\node.exe"
-        ]
-        
-        for path in nodePaths {
-            try {
-                RunWait(path ' --version', , "Hide", &output)
-                if (InStr(output, "v")) {
-                    this.Settings.nodeJsPath := path
-                    return true
-                }
-            } catch {
-                continue
-            }
-        }
-        
-        this.Settings.nodeJsPath := ""
-        return false
-    }
+
     
     ; Show QR Scanner GUI (instant loading with modern design)
     ShowQRScanner() {
         if (IsObject(this.GUI))
             this.GUI.Destroy()
             
-        this.GUI := Gui("-Resize -MaximizeBox", "QR Scanner v2.1 - Ultra Fast")
+        this.GUI := Gui("+AlwaysOnTop -Resize -MaximizeBox", "QR Scanner v2.1 - Ultra Fast")
         this.GUI.SetFont("s10", "Segoe UI")
         this.GUI.BackColor := "White"
         
@@ -280,11 +211,14 @@ class QRReaderPlugin extends Plugin {
         resultEdit := this.GUI.Add("Edit", "x20 y390 w500 h75 ReadOnly VScroll")
         resultEdit.Text := this.GetQRHistoryText()
         
-        ; Debug log section
-        this.GUI.Add("Text", "x20 y480 w300", "Debug Log:").SetFont("s10 Bold")
-        this.GUI.Add("Button", "x420 y477 w100 h25", "🧹 Clear Log").OnEvent("Click", (*) => this.ClearDebugLog())
-        debugLog := this.GUI.Add("Edit", "x20 y505 w500 h75 ReadOnly VScroll")
-        debugLog.Text := "⚡ Instant GUI loading - engines checking in background..."
+        ; External Debug Window controls
+        this.GUI.Add("Text", "x20 y480 w300", "Debug Information:").SetFont("s10 Bold")
+        this.GUI.Add("Button", "x20 y505 w120 h30", " Debug ").OnEvent("Click", (*) => this.ToggleDebugWindow())
+        this.GUI.Add("Button", "x150 y505 w100 h30", "🧹 Clear Log").OnEvent("Click", (*) => this.ClearDebugLog())
+        
+        ; Status display (replaces the small debug log)
+        debugStatus := this.GUI.Add("Text", "x260 y510 w260 h20 Center", "⚡ QR Scanner ready - engines will be checked when GUI opens")
+        debugStatus.SetFont("s9")
         
         ; Modern bottom button bar
         buttonBg := this.GUI.Add("Text", "x0 y595 w540 h55 Background0xF3F4F6")
@@ -297,7 +231,7 @@ class QRReaderPlugin extends Plugin {
         ; Store references
         this.GUI.statusText := statusText
         this.GUI.engineStatus := engineStatus
-        this.GUI.debugLog := debugLog
+        this.GUI.debugStatus := debugStatus
         this.GUI.resultEdit := resultEdit
         this.GUI.clipboardCheck := clipboardCheck
         this.GUI.soundCheck := soundCheck
@@ -308,12 +242,223 @@ class QRReaderPlugin extends Plugin {
         ; Show GUI instantly with proper size
         this.GUI.Show("w540 h650")
         
-        ; Update engine status in background (non-blocking) - with reasonable delay for performance
-        SetTimer(() => this.UpdateGUIEngineStatus(), -1000)  ; Increased from 10ms to 1000ms for better performance
+        ; Check engines when GUI is opened (user-initiated)
+        SetTimer(() => this.UpdateGUIEngineStatusOnOpen(), -1000)
+        
+        ; Generate some initial debug output
+        this.LogDebug("🚀 QR Scanner GUI opened")
+        this.LogDebug("⏳ Engine status check will begin in 1 second...")
     }
     
-    ; Update GUI engine status in background
-    UpdateGUIEngineStatus() {
+    ; Create or toggle external debug window
+    ToggleDebugWindow() {
+        if (this.HasProp("DebugGUI") && IsObject(this.DebugGUI)) {
+            ; Window exists, toggle visibility
+            try {
+                if (this.DebugGUI.Visible) {
+                    this.DebugGUI.Hide()
+                } else {
+                    this.DebugGUI.Show()
+                    this.DebugGUI.Move(, , , , "NoActivate")  ; Show without stealing focus
+                }
+            } catch {
+                ; If error (window destroyed), create new one
+                this.CreateDebugWindow()
+            }
+        } else {
+            ; Create new debug window
+            this.CreateDebugWindow()
+        }
+    }
+    
+    ; Create external debug window with professional light theme
+    CreateDebugWindow() {
+        try {
+            ; Create debug window with modern styling
+            this.DebugGUI := Gui("+Resize +MaximizeBox +MinimizeBox", "🐛 QR Reader Debug Console")
+            this.DebugGUI.BackColor := "0xF8F9FA"  ; Professional light background
+            this.DebugGUI.MarginX := 0
+            this.DebugGUI.MarginY := 0
+            
+            ; Calculate position relative to main window  
+            try {
+                mainPos := this.GUI.Pos
+                mainX := mainPos.X
+                mainY := mainPos.Y
+                mainWidth := mainPos.Width
+            } catch {
+                ; Fallback if main GUI position unavailable
+                mainX := A_ScreenWidth // 4
+                mainY := A_ScreenHeight // 4
+                mainWidth := 540
+            }
+            
+            ; Position debug window to the right of main window
+            debugX := mainX + mainWidth + 10
+            debugY := mainY
+            debugWidth := 900
+            debugHeight := 650
+            
+            ; Ensure window stays on screen
+            if (debugX + debugWidth > A_ScreenWidth) {
+                debugX := mainX - debugWidth - 10  ; Position to the left instead
+                if (debugX < 0) {
+                    debugX := 50  ; Fallback position
+                }
+            }
+            
+            ; Professional header bar with clean light styling
+            headerBg := this.DebugGUI.Add("Text", "x0 y0 w" debugWidth " h45 Background0xE9ECEF")
+            
+            ; Title with proper contrast
+            title := this.DebugGUI.Add("Text", "x15 y12 w" (debugWidth-120) " h20", "🐛 QR Reader Debug Console")
+            title.SetFont("s11 Bold", "Segoe UI")
+            title.Opt("c0x212529 Background0xE9ECEF")  ; Dark text on light background
+            
+            ; Subtitle
+            subtitle := this.DebugGUI.Add("Text", "x15 y30 w" (debugWidth-120) " h12", "Enhanced Readability Mode - Real-time Debug Output")
+            subtitle.SetFont("s8", "Segoe UI")
+            subtitle.Opt("c0x6C757D Background0xE9ECEF")  ; Subtle gray text
+            
+            ; Modern control buttons with better styling
+            testBtn := this.DebugGUI.Add("Button", "x" (debugWidth-125) " y8 w35 h28", "🧪")
+            testBtn.SetFont("s9")
+            testBtn.OnEvent("Click", (*) => this.TestDebugOutput())
+            testBtn.ToolTip := "Test Debug Output"
+            
+            clearBtn := this.DebugGUI.Add("Button", "x" (debugWidth-85) " y8 w35 h28", "🧹")
+            clearBtn.SetFont("s9")
+            clearBtn.OnEvent("Click", (*) => this.ClearDebugLog())
+            clearBtn.ToolTip := "Clear Debug Log"
+            
+            closeBtn := this.DebugGUI.Add("Button", "x" (debugWidth-45) " y8 w35 h28", "❌")
+            closeBtn.SetFont("s9")
+            closeBtn.OnEvent("Click", (*) => this.DebugGUI.Hide())
+            closeBtn.ToolTip := "Hide Debug Window"
+            
+            ; Main debug log area with professional light theme and proper word wrapping
+            this.DebugLogEdit := this.DebugGUI.Add("Edit", "x8 y53 w" (debugWidth-16) " h" (debugHeight-61) " ReadOnly VScroll Wrap")
+            this.DebugLogEdit.SetFont("s10", "Consolas")  ; Professional monospace font
+            this.DebugLogEdit.Opt("c0x212529 Background0xFFFFFF")  ; Clean colors: dark text on white background
+            
+            ; Initialize with clean, spaced welcome message
+            welcomeMsg := "`r`n`r`n"
+            welcomeMsg .= "═══════════════════════════════════════════════════════════════════════════════════════════════`r`n"
+            welcomeMsg .= "`r`n"
+            welcomeMsg .= "        🐛  QR READER DEBUG CONSOLE  -  ENHANCED READABILITY MODE  🐛`r`n"
+            welcomeMsg .= "`r`n"
+            welcomeMsg .= "═══════════════════════════════════════════════════════════════════════════════════════════════`r`n"
+            welcomeMsg .= "`r`n`r`n"
+            welcomeMsg .= "📅  SESSION STARTED: " FormatTime(A_Now, "yyyy-MM-dd HH:mm:ss") "`r`n`r`n"
+            welcomeMsg .= "🔧  PURPOSE: Real-time debugging and troubleshooting information`r`n`r`n"
+            welcomeMsg .= "📊  FEATURES: Color-coded messages, millisecond timestamps, smart formatting`r`n`r`n"
+            welcomeMsg .= "⚡  PERFORMANCE: Non-blocking updates, auto-scroll, intelligent line wrapping`r`n`r`n"
+            welcomeMsg .= "═══════════════════════════════════════════════════════════════════════════════════════════════`r`n"
+            welcomeMsg .= "`r`n`r`n"
+            welcomeMsg .= "✅  CONSOLE READY - Waiting for QR Reader operations...`r`n`r`n`r`n"
+            
+            this.DebugLogEdit.Text := welcomeMsg
+            
+            ; Handle window events
+            this.DebugGUI.OnEvent("Close", (*) => this.DebugGUI.Hide())
+            this.DebugGUI.OnEvent("Size", (*) => this.ResizeDebugWindow())
+            
+            ; Show window with professional appearance
+            this.DebugGUI.Show("x" debugX " y" debugY " w" debugWidth " h" debugHeight " NoActivate")
+            
+            ; Add initial test message to verify logging works
+            SetTimer(() => this.TestDebugOutput(), -500)
+            
+        } catch as e {
+            ; If debug window creation fails, show error
+            ShowMouseTooltip("Debug window creation failed: " e.Message, 3000)
+        }
+    }
+    
+    ; Test debug output to verify the window is working
+    TestDebugOutput() {
+        this.LogDebugSeparator()
+        this.LogDebug("🧪 DEBUG OUTPUT TEST - " FormatTime(A_Now, "HH:mm:ss"))
+        this.LogDebug("🔧 Debug window initialized and ready")
+        this.LogDebug("")
+        this.LogDebug("⚡ Testing message formatting with different types:")
+        this.LogDebug("")
+        this.LogDebug("✅ Success message example - this should appear with green indicator")
+        this.LogDebug("❌ Error message example - this should appear with red indicator") 
+        this.LogDebug("🚀 Process start example - this should appear with blue indicator")
+        this.LogDebug("📦 Info message example - this should appear with brown indicator")
+        this.LogDebug("💥 Exception example - this should appear with orange indicator")
+        this.LogDebug("🔄 Process indicator example - this should appear with purple indicator")
+        this.LogDebug("")
+        this.LogDebug("📂 File operation example:")
+        this.LogDebug("    Processing image: C:\\Very\\Long\\Path\\To\\Some\\Image\\File\\That\\Demonstrates\\Line\\Wrapping\\Functionality.png")
+        this.LogDebug("")
+        this.LogDebug("💡 Debug logging system is working correctly! All message types formatted and displayed.")
+        this.LogDebugSeparator()
+    }
+    
+    ; Handle debug window resizing with professional layout
+    ResizeDebugWindow() {
+        try {
+            if (!this.HasProp("DebugGUI") || !IsObject(this.DebugGUI) || !this.HasProp("DebugLogEdit"))
+                return
+                
+            ; Get current window size
+            winPos := this.DebugGUI.Pos
+            
+            ; Resize debug log to fill available space (accounting for header)
+            this.DebugLogEdit.Move(8, 53, winPos.Width - 16, winPos.Height - 61)
+            
+            ; Resize header background to full width
+            try {
+                for hwnd, control in this.DebugGUI {
+                    if (control.Type = "Text" && control.BackColor = "0xE9ECEF") {
+                        ; Check if it's the header background (first one found)
+                        control.Move(0, 0, winPos.Width, 45)
+                        break
+                    }
+                }
+            } catch {
+                ; Ignore header resize errors
+            }
+            
+            ; Reposition buttons to stay in top-right corner
+            try {
+                for hwnd, control in this.DebugGUI {
+                    if (control.Type = "Button") {
+                        if (InStr(control.Text, "❌")) {
+                            control.Move(winPos.Width - 45, 8)
+                        } else if (InStr(control.Text, "🧹")) {
+                            control.Move(winPos.Width - 85, 8)
+                        } else if (InStr(control.Text, "🧪")) {
+                            control.Move(winPos.Width - 125, 8)
+                        }
+                    }
+                }
+            } catch {
+                ; Ignore button repositioning errors
+            }
+            
+            ; Resize title and subtitle to match new width
+            try {
+                for hwnd, control in this.DebugGUI {
+                    if (control.Type = "Text" && InStr(control.Text, "QR Reader Debug Console")) {
+                        control.Move(15, 12, winPos.Width - 120, 20)
+                    } else if (control.Type = "Text" && InStr(control.Text, "Enhanced Readability Mode")) {
+                        control.Move(15, 30, winPos.Width - 120, 12)
+                    }
+                }
+            } catch {
+                ; Ignore text resize errors
+            }
+            
+        } catch {
+            ; Silently ignore resize errors
+        }
+    }
+    
+    ; Update GUI engine status when GUI is opened (user-initiated check)
+    UpdateGUIEngineStatusOnOpen() {
         ; Improved safety check for GUI controls
         if (!IsObject(this.GUI) || !this.GUI.HasProp("engineStatus") || !IsObject(this.GUI.engineStatus))
             return
@@ -324,16 +469,17 @@ class QRReaderPlugin extends Plugin {
                 this.GUI.statusText.Text := "Checking engines..."
             }
             
-            ; Update engine status (this might take time, but GUI is already visible)
+            ; Check engines since user opened GUI (this is user-initiated)
+            this.CheckEnginesOnDemand()
+            
+            ; Update engine status display
             engineStatus := this.GetEngineStatusFast()
             this.GUI.engineStatus.Text := engineStatus
             
-            ; Update debug log with engine count
+            ; Update debug status with engine count
             engineCount := this.CountAvailableEnginesFast()
-            if (this.GUI.HasProp("debugLog") && IsObject(this.GUI.debugLog)) {
-                currentLog := this.GUI.debugLog.Text
-                updatedLog := StrReplace(currentLog, "engines checking in background...", "engines loaded: " engineCount)
-                this.GUI.debugLog.Text := updatedLog
+            if (this.GUI.HasProp("debugStatus") && IsObject(this.GUI.debugStatus)) {
+                this.GUI.debugStatus.Text := "engines checked: " engineCount " engines available"
             }
             
             ; Update status
@@ -341,11 +487,48 @@ class QRReaderPlugin extends Plugin {
                 this.GUI.statusText.Text := "Ready - " engineCount " engines available"
             }
             
+            ; Log successful engine check
+            this.LogDebug("✅ Engine check completed: " engineCount " engines available")
+            
         } catch as e {
-            ; If background update fails, show error but keep GUI working
+            ; If engine check fails, show error but keep GUI working
             try {
                 if (IsObject(this.GUI) && this.GUI.HasProp("engineStatus") && IsObject(this.GUI.engineStatus)) {
                     this.GUI.engineStatus.Text := "Error checking engines - click Test for details"
+                }
+                if (IsObject(this.GUI) && this.GUI.HasProp("statusText") && IsObject(this.GUI.statusText)) {
+                    this.GUI.statusText.Text := "Ready - Engine status unknown"
+                }
+            } catch {
+                ; Silently ignore if GUI is completely destroyed
+            }
+        }
+    }
+    
+    ; Update GUI engine status display only (no checks - uses cache)
+    UpdateGUIEngineStatus() {
+        ; Improved safety check for GUI controls
+        if (!IsObject(this.GUI) || !this.GUI.HasProp("engineStatus") || !IsObject(this.GUI.engineStatus))
+            return
+            
+        try {
+            ; Update engine status display from cache only
+            engineStatus := this.GetEngineStatusFast()
+            this.GUI.engineStatus.Text := engineStatus
+            
+            ; Update debug log with engine count
+            engineCount := this.CountAvailableEnginesFast()
+            
+            ; Update status
+            if (this.GUI.HasProp("statusText") && IsObject(this.GUI.statusText)) {
+                this.GUI.statusText.Text := "Ready - " engineCount " engines available"
+            }
+            
+        } catch as e {
+            ; If display update fails, show error but keep GUI working
+            try {
+                if (IsObject(this.GUI) && this.GUI.HasProp("engineStatus") && IsObject(this.GUI.engineStatus)) {
+                    this.GUI.engineStatus.Text := "Error updating display - click Test for details"
                 }
                 if (IsObject(this.GUI) && this.GUI.HasProp("statusText") && IsObject(this.GUI.statusText)) {
                     this.GUI.statusText.Text := "Ready - Engine status unknown"
@@ -361,23 +544,31 @@ class QRReaderPlugin extends Plugin {
         this.UpdateSettings()
         this.LogDebugSeparator()
         this.LogDebug("🚀 Starting " scanType " scan")
+        this.LogDebug("⚙️ Scan type: " (scanType = "fullscreen" ? "Full Screen Capture" : "Image File Selection"))
         this.UpdateStatus("Preparing scan...")
         
         switch scanType {
             case "fullscreen": 
+                this.LogDebug("🖥️ Initiating full screen capture...")
                 this.ScanFullScreen()
             case "file":
+                this.LogDebug("📁 Opening file selection dialog...")
                 this.ScanImageFile()
         }
     }
     
-    ; Add visual separator to debug log
+    ; Add visual separator to debug log (enhanced for external debug window)
     LogDebugSeparator() {
+        ; Enhanced separator for external debug window
+        separator := "─────────────────────────────────────────────────────────────────────────────"
+        this.LogDebug(separator)
+        
+        ; Legacy support for internal debug log (if still used)
         try {
             if (IsObject(this.GUI) && this.GUI.HasProp("debugLog") && IsObject(this.GUI.debugLog)) {
                 currentLog := this.GUI.debugLog.Text
-                separator := "─────────────────────────────────────────"
-                newLog := currentLog "`n" separator
+                legacySeparator := "─────────────────────────────────────────"
+                newLog := currentLog "`r`n" legacySeparator
                 this.GUI.debugLog.Text := newLog
             }
         } catch {
@@ -398,7 +589,7 @@ class QRReaderPlugin extends Plugin {
         return RTrim(status, "`r`n")  ; Remove trailing newline
     }
     
-    ; Get engine status fast (uses cache if available)
+    ; Get engine status fast (uses cache only - no automatic checks)
     GetEngineStatusFast() {
         ; Use cached data if available
         if (this.HasProp("cachedEngines")) {
@@ -409,9 +600,8 @@ class QRReaderPlugin extends Plugin {
             return RTrim(status, "`r`n")  ; Remove trailing newline
         }
         
-        ; If no cache, do quick check and cache results
-        this.CacheAvailableEngines()
-        return this.GetEngineStatusFast()  ; Recursive call with cache
+        ; Return instruction to manually check if no cache exists
+        return "Engines: ❓ Click 'Test' button to check availability"
     }
     
     ; Check if specific engine is available
@@ -437,10 +627,13 @@ class QRReaderPlugin extends Plugin {
             tempBat := A_Temp "\qr_check_" A_TickCount ".bat"
             tempOut := A_Temp "\qr_check_output_" A_TickCount ".txt"
             
+            ; Create batch file with timeout protection
             batContent := "@echo off`n"
+            batContent .= "timeout /t 15 /nobreak > nul 2>&1`n"  ; 15 second hard timeout
             batContent .= pythonCmd ' -c "import ' packageName '; print(\"OK\")" > "' tempOut '" 2>&1`n'
             FileAppend(batContent, tempBat)
             
+            ; Run with limited time
             exitCode := RunWait('"' tempBat '"', , "Hide")
             
             ; Read the output file
@@ -455,7 +648,7 @@ class QRReaderPlugin extends Plugin {
                 return true
             }
         } catch {
-            ; If batch file approach fails, try direct fallback
+            ; If batch file approach fails, try direct fallback with timeout
             pythonCommands := ["python", "py", "python3"]
             
             for cmd in pythonCommands {
@@ -464,9 +657,11 @@ class QRReaderPlugin extends Plugin {
                     tempOut := A_Temp "\qr_fallback_output_" A_TickCount ".txt"
                     
                     batContent := "@echo off`n"
+                    batContent .= "timeout /t 10 /nobreak > nul 2>&1`n"  ; 10 second timeout for fallback
                     batContent .= cmd ' -c "import ' packageName '; print(\"OK\")" > "' tempOut '" 2>&1`n'
                     FileAppend(batContent, tempBat)
                     
+                    ; Run fallback with timeout
                     exitCode := RunWait('"' tempBat '"', , "Hide")
                     
                     result := ""
@@ -487,52 +682,7 @@ class QRReaderPlugin extends Plugin {
         return false
     }
     
-    ; Check Node.js setup with path verification
-    CheckNodeJsSetup() {
-        ; First check if Node.js is accessible
-        nodeCommands := ["node", "nodejs"]
-        nodeWorking := false
-        
-        for cmd in nodeCommands {
-            try {
-                RunWait(cmd ' --version', , "Hide", &output)
-                if (InStr(output, "v")) {
-                    this.Settings.nodeJsPath := cmd
-                    nodeWorking := true
-                    break
-                }
-            } catch {
-                continue
-            }
-        }
-        
-        if (!nodeWorking) {
-            return false
-        }
-        
-        ; Check if jsQR script exists and recreate if needed
-        if (!FileExist(this.Settings.jsQRScriptPath)) {
-            this.CreateQRProcessorScript()
-        }
-        
-        ; Test jsQR package availability
-        try {
-            RunWait(this.Settings.nodeJsPath ' -e "require(\"jsqr\"); console.log(\"OK\")"', , "Hide", &output)
-            if (InStr(output, "OK")) {
-                return true
-            }
-        } catch {
-            ; Try from script directory
-            try {
-                RunWait(this.Settings.nodeJsPath ' -e "require(\"./node_modules/jsqr\"); console.log(\"OK\")"', A_ScriptDir, "Hide", &output)
-                return InStr(output, "OK") > 0
-            } catch {
-                return false
-            }
-        }
-        
-        return false
-    }
+
     
     ; Count available engines (may be slow)
     CountAvailableEngines() {
@@ -547,7 +697,7 @@ class QRReaderPlugin extends Plugin {
         return count "/3"
     }
     
-    ; Count available engines fast (uses cache)
+    ; Count available engines fast (uses cache only - no background checks)
     CountAvailableEnginesFast() {
         ; Use cached data if available
         if (this.HasProp("cachedEngines")) {
@@ -559,12 +709,8 @@ class QRReaderPlugin extends Plugin {
             return count "/3"
         }
         
-        ; If no cache, trigger background cache only once (with much longer delay for performance)
-        if (!this.HasProp("cachingInProgress")) {
-            this.cachingInProgress := true
-            SetTimer(() => this.CacheAvailableEnginesOnce(), -2000)  ; Increased from 50ms to 2000ms to reduce performance impact
-        }
-        return "0/3 (checking...)"
+        ; Return unknown status if no cache (user must manually check)
+        return "0/3 (click Test to check)"
     }
     
     ; Update status text
@@ -577,29 +723,256 @@ class QRReaderPlugin extends Plugin {
         }
     }
     
-    ; Log debug message with improved formatting
+    ; Log debug message to external debug window with excellent formatting
     LogDebug(message) {
-        timestamp := FormatTime(A_Now, "HH:mm:ss")
+        ; Skip empty messages unless they're intentional spacers
+        if (message = "" || message = " ") {
+            ; Write to external debug window if available
+            try {
+                if (this.HasProp("DebugLogEdit") && IsObject(this.DebugLogEdit)) {
+                    currentLog := this.DebugLogEdit.Text
+                    newLog := currentLog "`r`n"
+                    this.DebugLogEdit.Text := newLog
+                }
+            } catch {
+                ; Silently ignore errors when debug window is not available
+            }
+            return
+        }
         
-        ; Format long messages for better readability
-        formattedMessage := this.FormatDebugMessage(message)
-        logEntry := "[" timestamp "] " formattedMessage
+        timestamp := FormatTime(A_Now, "HH:mm:ss.fff")
         
-        ; Improved safety check to prevent accessing destroyed controls
+        ; Enhanced message formatting for external window
+        formattedMessage := this.FormatDebugMessageExternal(message)
+        
+        ; Better timestamp formatting with new line separation (using \r\n for Edit control)
+        logEntry := "⏰ " timestamp "`r`n" formattedMessage
+        
+        ; Write to external debug window if available
         try {
-            if (IsObject(this.GUI) && this.GUI.HasProp("debugLog") && IsObject(this.GUI.debugLog)) {
-                currentLog := this.GUI.debugLog.Text
-                newLog := currentLog "`n" logEntry
-                this.GUI.debugLog.Text := newLog
+            if (this.HasProp("DebugLogEdit") && IsObject(this.DebugLogEdit)) {
+                currentLog := this.DebugLogEdit.Text
                 
-                ; Auto-scroll to bottom
-                this.GUI.debugLog.Focus()
-                Send("^{End}")
+                ; Add better spacing between messages for improved readability
+                spacing := this.GetMessageSpacing(message, currentLog)
+                newLog := currentLog . spacing . logEntry
+                this.DebugLogEdit.Text := newLog
+                
+                ; Auto-scroll to bottom without stealing focus
+                try {
+                    DllCall("User32.dll\SendMessage", "Ptr", this.DebugLogEdit.Hwnd, "UInt", 0x00B1, "Ptr", -1, "Ptr", -1)
+                    DllCall("User32.dll\SendMessage", "Ptr", this.DebugLogEdit.Hwnd, "UInt", 0x00B7, "Ptr", 0, "Ptr", 0)
+                } catch {
+                    ; Fallback to no scrolling if DLL call fails
+                }
             }
         } catch {
-            ; Silently ignore errors when GUI controls are destroyed
-            ; This prevents crashes when background processes try to log after GUI closure
+            ; Silently ignore errors when debug window is not available
         }
+        
+        ; Also update status in main GUI if it's a key status message
+        try {
+            if (this.IsKeyStatusMessage(message) && IsObject(this.GUI) && this.GUI.HasProp("debugStatus") && IsObject(this.GUI.debugStatus)) {
+                this.GUI.debugStatus.Text := this.ExtractStatusFromMessage(message)
+            }
+        } catch {
+            ; Silently ignore main GUI update errors
+                 }
+    }
+    
+    ; Determine appropriate spacing between debug messages for better readability
+    GetMessageSpacing(message, currentLog) {
+        ; If log is empty or ends with separator, use single newline
+        if (!currentLog || InStr(currentLog, "═══════════════════════════════════════") > StrLen(currentLog) - 100) {
+            return "`r`n"
+        }
+        
+        ; Major section breaks (separators, diagnostics, major events) get lots of space
+        if (InStr(message, "═══") || InStr(message, "DIAGNOSTICS") || InStr(message, "DEBUG OUTPUT TEST") || 
+            InStr(message, "COMPLETE") || InStr(message, "Session Started")) {
+            return "`r`n`r`n`r`n"
+        }
+        
+        ; Long separator lines get extra space
+        if (InStr(message, "─────────────────────────────────────────────────────")) {
+            return "`r`n`r`n"
+        }
+        
+        ; Operation start messages get lots of spacing
+        if (InStr(message, "🚀") && (InStr(message, "Starting") || InStr(message, "Processing") || InStr(message, "Running"))) {
+            return "`r`n`r`n`r`n"
+        }
+        
+        ; Success/Error completion messages get lots of spacing  
+        if ((InStr(message, "✅") || InStr(message, "❌")) && 
+            (InStr(message, "completed") || InStr(message, "failed") || InStr(message, "SUCCESS") || InStr(message, "working"))) {
+            return "`r`n`r`n"
+        }
+        
+        ; Engine status messages get extra spacing
+        if (InStr(message, "📦") && (InStr(message, "Testing") || InStr(message, "checking") || InStr(message, "engines available"))) {
+            return "`r`n`r`n"
+        }
+        
+        ; File operations get extra spacing
+        if (InStr(message, "📁") || InStr(message, "📂") || InStr(message, "📷") || InStr(message, "📸")) {
+            return "`r`n`r`n"
+        }
+        
+        ; Time/performance measurements get spacing
+        if (InStr(message, "Time:") || InStr(message, "ms") || InStr(message, "Size:")) {
+            return "`r`n`r`n"
+        }
+        
+        ; Sub-messages (indented with spaces) get less spacing
+        if (RegExMatch(message, "^\s{2,}")) {
+            return "`r`n"
+        }
+        
+        ; Regular messages get double line break for breathing room
+        return "`r`n`r`n"
+    }
+    
+    ; Enhanced debug message formatting for external window
+    FormatDebugMessageExternal(message) {
+        ; Add visual indicators and better formatting for different message types
+        if (InStr(message, "✅")) {
+            return "🟢 SUCCESS: " StrReplace(message, "✅ ", "")  ; Success indicator
+        }
+        else if (InStr(message, "❌")) {
+            return "🔴 ERROR: " StrReplace(message, "❌ ", "")  ; Error indicator
+        }
+        else if (InStr(message, "⚡")) {
+            return "🟡 ACTION: " StrReplace(message, "⚡ ", "")  ; Action indicator
+        }
+        else if (InStr(message, "🚀")) {
+            return "🔵 START: " StrReplace(message, "🚀 ", "")  ; Process start indicator
+        }
+        else if (InStr(message, "💥")) {
+            return "🟠 EXCEPTION: " StrReplace(message, "💥 ", "")  ; Exception indicator
+        }
+        else if (InStr(message, "🔄")) {
+            return "🟣 PROCESS: " StrReplace(message, "🔄 ", "")  ; Process indicator
+        }
+        else if (InStr(message, "📦") || InStr(message, "🐍") || InStr(message, "📂")) {
+            return "🟤 INFO: " message  ; Info indicator
+        }
+        else if (InStr(message, "DIAGNOSTICS") || InStr(message, "COMPLETE")) {
+            return "⚪ EVENT: " message  ; Major event indicator
+        }
+        else if (InStr(message, "🧪")) {
+            return "🟦 TEST: " StrReplace(message, "🧪 ", "")  ; Test indicator
+        }
+        
+        ; Break long lines for better readability in external window
+        if (StrLen(message) > 80) {
+            ; Handle different message types with proper line breaks
+            if (InStr(message, "Raw JSON received:")) {
+                parts := StrSplit(message, "Raw JSON received: ", , 2)
+                if (parts.Length >= 2) {
+                    return parts[1] "Raw JSON received:`r`n      " parts[2]
+                }
+            }
+            else if (InStr(message, "Running:") || InStr(message, "Creating:")) {
+                return StrReplace(message, "Running:", "Running:`r`n      ")
+            }
+            else if (InStr(message, "Processing image:")) {
+                return StrReplace(message, "Processing image:", "Processing image:`r`n      ")
+            }
+            else if (InStr(message, "File selected:")) {
+                return StrReplace(message, "File selected:", "File selected:`r`n      ")
+            }
+            else if (InStr(message, "Project root:")) {
+                return StrReplace(message, "Project root:", "Project root:`r`n      ")
+            }
+            else if (InStr(message, "Virtual environment:")) {
+                return StrReplace(message, "Virtual environment:", "Virtual environment:`r`n      ")
+            }
+            else if (InStr(message, "Exit code:") && InStr(message, "output:")) {
+                parts := StrSplit(message, ", output: ", , 2)
+                if (parts.Length >= 2) {
+                    return parts[1] "`r`n      Output: " parts[2]
+                }
+            }
+            else if (StrLen(message) > 80) {
+                ; Generic long message formatting
+                words := StrSplit(message, " ")
+                result := ""
+                currentLine := ""
+                
+                for word in words {
+                    if (StrLen(currentLine " " word) > 80 && currentLine != "") {
+                        result .= (result ? "`r`n      " : "") currentLine
+                        currentLine := word
+                    } else {
+                        currentLine .= (currentLine ? " " : "") word
+                    }
+                }
+                
+                if (currentLine) {
+                    result .= (result ? "`r`n      " : "") currentLine
+                }
+                
+                return result
+            }
+        }
+        
+        return message
+    }
+    
+    ; Check if a debug message should update the main GUI status
+    IsKeyStatusMessage(message) {
+        keyIndicators := [
+            "Engine check completed",
+            "engines available",
+            "DIAGNOSTICS COMPLETE",
+            "Ready -",
+            "Scanning with",
+            "QR found",
+            "No QR code found",
+            "Installation successful",
+            "Installation failed"
+        ]
+        
+        for indicator in keyIndicators {
+            if (InStr(message, indicator)) {
+                return true
+            }
+        }
+        
+        return false
+    }
+    
+    ; Extract status text from debug message for main GUI
+    ExtractStatusFromMessage(message) {
+        if (InStr(message, "Engine check completed")) {
+            if (RegExMatch(message, "(\d+) engines available", &match)) {
+                return "Ready - " match[1] " engines available"
+            }
+        }
+        else if (InStr(message, "DIAGNOSTICS COMPLETE")) {
+            return "Diagnostics completed"
+        }
+        else if (InStr(message, "Scanning with")) {
+            if (RegExMatch(message, "Scanning with (\w+)", &match)) {
+                return "Scanning with " match[1] "..."
+            }
+        }
+        else if (InStr(message, "QR found")) {
+            return "QR code detected!"
+        }
+        else if (InStr(message, "No QR code found")) {
+            return "No QR code found"
+        }
+        else if (InStr(message, "Installation successful")) {
+            return "Installation completed"
+        }
+        else if (InStr(message, "Installation failed")) {
+            return "Installation failed"
+        }
+        
+        ; Default: truncate message for status display
+        return SubStr(message, 1, 40) (StrLen(message) > 40 ? "..." : "")
     }
     
     ; Format debug messages for better readability
@@ -679,15 +1052,31 @@ class QRReaderPlugin extends Plugin {
         return message
     }
     
-    ; Clear debug log
+    ; Clear debug log in external window
     ClearDebugLog() {
         try {
-            if (IsObject(this.GUI) && this.GUI.HasProp("debugLog") && IsObject(this.GUI.debugLog)) {
-                this.GUI.debugLog.Text := "Debug log cleared"
-                this.LogDebug("Log cleared by user")
+            if (this.HasProp("DebugLogEdit") && IsObject(this.DebugLogEdit)) {
+                ; Reset to professional welcome message
+                welcomeMsg := "═══════════════════════════════════════════════════════════════════════════════════════════════`n"
+                welcomeMsg .= "  🐛  QR READER DEBUG CONSOLE  -  ENHANCED READABILITY MODE  🐛`n"
+                welcomeMsg .= "═══════════════════════════════════════════════════════════════════════════════════════════════`n"
+                welcomeMsg .= "📅 Log Cleared: " FormatTime(A_Now, "yyyy-MM-dd HH:mm:ss") "`n"
+                welcomeMsg .= "🔧 Purpose: Real-time debugging and troubleshooting information`n"
+                welcomeMsg .= "📊 Features: Color-coded messages, millisecond timestamps, smart formatting`n"
+                welcomeMsg .= "⚡ Performance: Non-blocking updates, auto-scroll, intelligent line wrapping`n"
+                welcomeMsg .= "═══════════════════════════════════════════════════════════════════════════════════════════════`n"
+                welcomeMsg .= "`n✅ Console cleared and ready - waiting for QR Reader operations...`n`n"
+                
+                this.DebugLogEdit.Text := welcomeMsg
+                ; Don't call LogDebug here as it would create a loop
+                ShowMouseTooltip("Debug log cleared", 1500)
+            } else {
+                ; If debug window doesn't exist, just show confirmation
+                ShowMouseTooltip("Debug log cleared", 1500)
             }
         } catch {
-            ; Silently ignore errors when GUI controls are destroyed
+            ; Silently ignore errors and show fallback message
+            ShowMouseTooltip("Debug log cleared", 1500)
         }
     }
     
@@ -886,6 +1275,9 @@ class QRReaderPlugin extends Plugin {
         this.LogDebug("🔬 RUNNING DIAGNOSTICS")
         this.UpdateStatus("Running diagnostics...")
         
+        ; Check and cache engines when user clicks Test (user-initiated)
+        this.CheckEnginesOnDemand()
+        
         ; Test 1: Check Python availability
         this.LogDebug("")
         this.LogDebug("🐍 Testing Python availability...")
@@ -997,7 +1389,7 @@ class QRReaderPlugin extends Plugin {
         this.LogDebug("📷 Testing screenshot capability...")
         try {
             tempPath := A_Temp "\qr_test_screenshot.png"
-            psCmd := 'powershell -command "Add-Type -AssemblyName System.Windows.Forms; '
+            psCmd := 'powershell -ExecutionPolicy Bypass -command "Add-Type -AssemblyName System.Windows.Forms; '
             psCmd .= '$bounds = [System.Drawing.Rectangle]::new(0, 0, 100, 100); '
             psCmd .= '$bitmap = New-Object System.Drawing.Bitmap(100, 100); '
             psCmd .= '$graphics = [System.Drawing.Graphics]::FromImage($bitmap); '
@@ -1020,24 +1412,34 @@ class QRReaderPlugin extends Plugin {
         this.LogDebug("")
         this.LogDebug("🏁 DIAGNOSTICS COMPLETE")
         this.LogDebugSeparator()
-        this.UpdateStatus("Diagnostics complete - check log")
         
-        ; Refresh engine status and debug log header
+        ; Update status with engine count first  
+        engineCount := this.CountAvailableEnginesFast()
+        this.UpdateStatus("Diagnostics complete - " engineCount " engines available")
+        
+        ; Small delay to ensure cache is updated, then refresh GUI display
+        SetTimer(() => this.UpdateGUIAfterDiagnostics(), -100)
+    }
+    
+    ; Update GUI display after diagnostics complete
+    UpdateGUIAfterDiagnostics() {
         try {
             if (IsObject(this.GUI)) {
+                ; Update engine status display
                 if (this.GUI.HasProp("engineStatus") && IsObject(this.GUI.engineStatus)) {
-                    this.GUI.engineStatus.Text := this.GetEngineStatus()
+                    this.GUI.engineStatus.Text := this.GetEngineStatusFast()
                 }
-                if (this.GUI.HasProp("debugLog") && IsObject(this.GUI.debugLog)) {
-                    ; Update the initial debug log to show correct count
-                    currentLog := this.GUI.debugLog.Text
-                    ; Replace the old engine count with current count
-                    engineCount := this.CountAvailableEngines()
-                    newHeader := "Python QR Scanner initialized successfully`nPython engines loaded: " engineCount
-                    if (InStr(currentLog, "Python engines loaded: 0/3")) {
-                        currentLog := StrReplace(currentLog, "Python engines loaded: 0/3", "Python engines loaded: " engineCount)
-                        this.GUI.debugLog.Text := currentLog
-                    }
+                
+                ; Update status text with engine count
+                if (this.GUI.HasProp("statusText") && IsObject(this.GUI.statusText)) {
+                    engineCount := this.CountAvailableEnginesFast()
+                    this.GUI.statusText.Text := "Diagnostics complete - " engineCount " engines available"
+                }
+                
+                ; Update debug status header
+                if (this.GUI.HasProp("debugStatus") && IsObject(this.GUI.debugStatus)) {
+                    engineCount := this.CountAvailableEnginesFast()
+                    this.GUI.debugStatus.Text := "diagnostics complete - " engineCount " engines available"
                 }
             }
         } catch {
@@ -1166,7 +1568,7 @@ class QRReaderPlugin extends Plugin {
             tempPath := this.Settings.tempImagePath
             
             ; Speed-optimized PowerShell capture (single line, minimal objects)
-            psCmd := 'powershell -command "'
+            psCmd := 'powershell -ExecutionPolicy Bypass -command "'
             psCmd .= 'Add-Type -AssemblyName System.Windows.Forms,System.Drawing;'
             psCmd .= '$b=New-Object System.Drawing.Bitmap(' width ',' height ');'
             psCmd .= '$g=[System.Drawing.Graphics]::FromImage($b);'
@@ -1218,29 +1620,7 @@ class QRReaderPlugin extends Plugin {
         this.ProcessImageWithFallback(selectedFile)
     }
     
-    ; Process image with jsQR via Node.js
-    ProcessImageWithJsQR(imagePath) {
-        if (!FileExist(imagePath)) {
-            ShowMouseTooltip("Image file not found", 2000)
-            return
-        }
-        
-        try {
-            nodeCmd := '"' this.Settings.nodeJsPath '" "' this.Settings.jsQRScriptPath '" "' imagePath '"'
-            
-            RunWait(nodeCmd, , "Hide", &output)
-            
-            try {
-                result := this.ParseJSON(output)
-                this.HandleQRResult(result)
-            } catch {
-                ShowMouseTooltip("Error parsing QR scan result", 2000)
-            }
-            
-        } catch as e {
-            ShowMouseTooltip("Error running QR processor: " e.Message, 3000)
-        }
-    }
+
     
     ; Speed-optimized QR processing with smart engine selection
     ProcessImageWithFallback(imagePath) {
@@ -1344,39 +1724,42 @@ class QRReaderPlugin extends Plugin {
     ; Cache available engines to avoid repeated checks
     CacheAvailableEngines() {
         this.LogDebug("🔄 Caching available engines...")
+        
+        ; Initialize cache map
         this.cachedEngines := Map()
         
         engines := ["pyzbar", "zxing-cpp", "OpenCV"]
         for engine in engines {
-            available := this.CheckEngineAvailable(engine)
-            this.cachedEngines[engine] := available
-            this.LogDebug("📦 " engine ": " (available ? "✅" : "❌"))
+            try {
+                ; Add timeout protection for each engine check
+                available := this.CheckEngineAvailable(engine)
+                this.cachedEngines[engine] := available
+                this.LogDebug("📦 " engine ": " (available ? "✅" : "❌"))
+            } catch as e {
+                ; If individual engine check fails, mark as unavailable and continue
+                this.cachedEngines[engine] := false
+                this.LogDebug("📦 " engine ": ❌ (Error: " e.Message ")")
+            }
         }
         
-        ; Refresh cache every 5 minutes (only set timer once)
-        if (!this.HasProp("refreshTimerSet")) {
-            this.refreshTimerSet := true
-            SetTimer(() => this.RefreshEngineCache(), 300000)
+        ; Ensure we have a valid cache even if all checks failed
+        if (!IsObject(this.cachedEngines) || this.cachedEngines.Count == 0) {
+            this.cachedEngines := Map()
+            for engine in engines {
+                this.cachedEngines[engine] := false
+            }
+            this.LogDebug("⚠️ All engine checks failed - marking all as unavailable")
         }
+        
+        ; No automatic refresh - engines will only be checked when requested by user
     }
     
-    ; Cache engines once (prevents infinite loops)
-    CacheAvailableEnginesOnce() {
-        try {
-            this.CacheAvailableEngines()
-        } catch as e {
-            this.LogDebug("❌ Engine caching failed: " e.Message)
-        } finally {
-            ; Clear the caching flag regardless of success/failure
-            this.DeleteProp("cachingInProgress")
-        }
-    }
+
     
-    ; Refresh engine cache
+    ; Refresh engine cache (manual refresh only)
     RefreshEngineCache() {
         this.DeleteProp("cachedEngines")
         this.DeleteProp("cachingInProgress")
-        this.DeleteProp("refreshTimerSet")
         this.CacheAvailableEngines()
     }
     
@@ -1423,12 +1806,45 @@ class QRReaderPlugin extends Plugin {
             output := FileRead(tempOut)
         }
         
-        ; Cleanup in background for speed
+        ; Schedule cleanup (centralized to prevent timer accumulation)
         if (!speedMode) {
-            SetTimer(() => this.CleanupTempFiles(tempBat, tempOut), -100)
+            this.ScheduleCleanup(tempBat, tempOut)
         }
         
         return this.ParseJSON(output)
+    }
+    
+    ; Centralized cleanup scheduler to prevent timer accumulation
+    ScheduleCleanup(batFile, outFile) {
+        ; Add files to cleanup queue
+        if (!this.HasProp("cleanupQueue")) {
+            this.cleanupQueue := []
+        }
+        
+        this.cleanupQueue.Push({bat: batFile, out: outFile, time: A_TickCount})
+        
+        ; Start cleanup timer only if not already running
+        if (!this.HasProp("cleanupTimerActive")) {
+            this.cleanupTimerActive := true
+            SetTimer(() => this.ProcessCleanupQueue(), -500)  ; Single timer for all cleanup
+        }
+    }
+    
+    ; Process cleanup queue
+    ProcessCleanupQueue() {
+        this.DeleteProp("cleanupTimerActive")
+        
+        if (!this.HasProp("cleanupQueue") || this.cleanupQueue.Length == 0) {
+            return
+        }
+        
+        ; Process all queued items
+        for item in this.cleanupQueue {
+            this.CleanupTempFiles(item.bat, item.out)
+        }
+        
+        ; Clear the queue
+        this.cleanupQueue := []
     }
     
     ; Cleanup temporary files (for background cleanup)
@@ -1542,9 +1958,9 @@ class QRReaderPlugin extends Plugin {
             output := FileRead(tempOut)
         }
         
-        ; Background cleanup for speed
+        ; Schedule cleanup (centralized to prevent timer accumulation)
         if (!speedMode) {
-            SetTimer(() => this.CleanupTempFiles(tempBat, tempOut), -100)
+            this.ScheduleCleanup(tempBat, tempOut)
         }
         
         return this.ParseJSON(output)
@@ -1772,14 +2188,7 @@ class QRReaderPlugin extends Plugin {
         resultGui.Show("w440 h300")
     }
     
-    ; Check Node.js availability
-    CheckNodeJsAvailability() {
-        if (!this.Settings.nodeJsPath || !FileExist(this.Settings.jsQRScriptPath)) {
-            TopMsgBox("Node.js or jsQR processor not available.`n`nPlease:`n1. Install Node.js`n2. Install jsQR: npm install jsqr`n3. Use Install jsQR button", "QR Reader Setup Required", "Iconx")
-            return false
-        }
-        return true
-    }
+
     
     ; Install Python QR engines
     InstallPythonEngines() {
@@ -1807,6 +2216,8 @@ class QRReaderPlugin extends Plugin {
         ; Create universal PowerShell setup script
         try {
             this.LogDebug("📝 Creating PowerShell setup script...")
+            this.LogDebug("📂 Project root will be: " A_ScriptDir "\..")
+            this.LogDebug("📂 Virtual environment will be created at: " A_ScriptDir "\..\qr_venv")
             setupScript := this.CreateUniversalSetupScript()
             this.LogDebug("✅ Setup script created at: " setupScript)
         } catch as e {
@@ -1829,14 +2240,16 @@ class QRReaderPlugin extends Plugin {
             ; Update status
             statusText.Text := "Creating virtual environment..."
             
-            ; Run PowerShell setup script
+            ; Run PowerShell setup script from project root directory
             psCmd := 'powershell.exe -ExecutionPolicy Bypass -File "' setupScript '"'
             
             ; Run with output capture
             tempOut := A_Temp "\qr_setup_output_" A_TickCount ".txt"
             psCmd .= ' > "' tempOut '" 2>&1'
             
-            exitCode := RunWait(psCmd, A_ScriptDir, "Hide")
+            ; Run from project root to ensure correct working directory
+            projectRoot := A_ScriptDir "\.."
+            exitCode := RunWait(psCmd, projectRoot, "Hide")
             
             ; Read output
             output := ""
@@ -1893,10 +2306,11 @@ class QRReaderPlugin extends Plugin {
     
     ; Create universal PowerShell setup script
     CreateUniversalSetupScript() {
-        ; Try multiple locations for the script
+        ; Try multiple locations for the script (prefer project directory first)
         possiblePaths := [
-            A_Temp "\setup_qr_universal_" A_TickCount ".ps1",
             A_ScriptDir "\setup_qr_universal_" A_TickCount ".ps1",
+            A_ScriptDir "\..\setup_qr_universal_" A_TickCount ".ps1",
+            A_Temp "\setup_qr_universal_" A_TickCount ".ps1",
             A_WorkingDir "\setup_qr_universal_" A_TickCount ".ps1"
         ]
         
@@ -1926,16 +2340,11 @@ class QRReaderPlugin extends Plugin {
         script .= "# Set execution policy for this session`n"
         script .= "Set-ExecutionPolicy -ExecutionPolicy Bypass -Scope Process -Force`n`n"
         
-        script .= "# Determine project directory (works from any location)`n"
-        script .= "$ProjectDir = Split-Path -Parent $PSScriptRoot`n"
-        script .= "if (Test-Path (Join-Path $ProjectDir 'src')) {`n"
-        script .= "    $ProjectDir = $ProjectDir`n"
-        script .= "} elseif (Test-Path (Join-Path (Split-Path -Parent $ProjectDir) 'src')) {`n"
-        script .= "    $ProjectDir = Split-Path -Parent $ProjectDir`n"
-        script .= "} else {`n"
-        script .= "    $ProjectDir = $PSScriptRoot`n"
-        script .= "}`n"
-        script .= "Write-Host `"Using project directory: $ProjectDir`" -ForegroundColor Yellow`n`n"
+        script .= "# Use the correct project directory (passed from AHK script)`n"
+        projectDir := StrReplace(A_ScriptDir "\..", "\", "\\")
+        script .= "$ProjectDir = '" projectDir "'`n"
+        script .= "Write-Host `"Using project directory: $ProjectDir`" -ForegroundColor Yellow`n"
+        script .= "Write-Host `"Virtual environment will be: $ProjectDir\\qr_venv`" -ForegroundColor Cyan`n`n"
         
         script .= "# Set virtual environment path`n"
         script .= "$VenvPath = Join-Path $ProjectDir 'qr_venv'`n"
@@ -2124,8 +2533,8 @@ class QRReaderPlugin extends Plugin {
         manualGui.Add("Text", "x20 y20 w400", "Manual Installation Steps:").SetFont("s12 Bold")
         
         steps := "1. Open Command Prompt or PowerShell as Administrator`n`n"
-        steps .= "2. Navigate to project directory:`n"
-        steps .= "   cd `"" A_ScriptDir "`"`n`n"
+        steps .= "2. Navigate to project root directory:`n"
+        steps .= "   cd `"" A_ScriptDir "\.." "`"`n`n"
         steps .= "3. Create virtual environment:`n"
         steps .= "   python -m venv qr_venv`n`n"
         steps .= "4. Activate virtual environment:`n"
@@ -2167,11 +2576,19 @@ class QRReaderPlugin extends Plugin {
         try {
             this.LogDebug("🔧 Attempting direct PowerShell installation...")
             
-            ; Simple direct commands
+            ; Simple direct commands with correct project root path
+            projectRoot := A_ScriptDir "\.."
+            venvPath := projectRoot "\qr_venv"
+            venvPython := venvPath "\Scripts\python.exe"
+            
+            this.LogDebug("📂 Project root: " projectRoot)
+            this.LogDebug("📂 Virtual environment path: " venvPath)
+            this.LogDebug("📂 Virtual environment Python: " venvPython)
+            
             commands := [
-                'python -m venv "' A_ScriptDir '\..\qr_venv"',
-                '"' A_ScriptDir '\..\qr_venv\Scripts\python.exe" -m pip install --upgrade pip',
-                                 '"' A_ScriptDir '\..\qr_venv\Scripts\python.exe" -m pip install opencv-python zxing-cpp pyzbar Pillow numpy'
+                'python -m venv "' venvPath '"',
+                '"' venvPython '" -m pip install --upgrade pip',
+                '"' venvPython '" -m pip install opencv-python zxing-cpp pyzbar Pillow numpy'
             ]
             
             progressGui := Gui("+Owner" (IsObject(this.GUI) ? this.GUI.Hwnd : ""), "Direct Installation")
@@ -2184,13 +2601,13 @@ class QRReaderPlugin extends Plugin {
                 statusText.Text := "Step " i "/3: " (i=1 ? "Creating venv..." : i=2 ? "Upgrading pip..." : "Installing packages...")
                 
                 this.LogDebug("⚡ Running: " cmd)
-                exitCode := RunWait('powershell -Command "' cmd '"', A_ScriptDir, "Hide")
+                exitCode := RunWait('powershell -ExecutionPolicy Bypass -Command "' cmd '"', projectRoot, "Hide")
                 
                 if (exitCode != 0 && i = 1) {
                     ; Try with py command if python failed
                     altCmd := StrReplace(cmd, "python", "py")
                     this.LogDebug("⚡ Retrying with: " altCmd)
-                    exitCode := RunWait('powershell -Command "' altCmd '"', A_ScriptDir, "Hide")
+                    exitCode := RunWait('powershell -ExecutionPolicy Bypass -Command "' altCmd '"', projectRoot, "Hide")
                 }
                 
                 if (exitCode != 0) {
@@ -2203,8 +2620,8 @@ class QRReaderPlugin extends Plugin {
             progressGui.Destroy()
             
             ; Test the installation
-            testCmd := '"' A_ScriptDir '\..\qr_venv\Scripts\python.exe" -c "import cv2, zxingcpp, pyzbar, PIL; print(\"OK\")"'
-            exitCode := RunWait('powershell -Command "' testCmd '"', A_ScriptDir, "Hide", &testOutput)
+            testCmd := '"' venvPython '" -c "import cv2, zxingcpp, pyzbar, PIL; print(\"OK\")"'
+            exitCode := RunWait('powershell -ExecutionPolicy Bypass -Command "' testCmd '"', projectRoot, "Hide", &testOutput)
             
             if (exitCode = 0 && InStr(testOutput, "OK")) {
                 this.LogDebug("✅ Direct installation successful!")
@@ -2309,14 +2726,27 @@ class QRReaderPlugin extends Plugin {
     ; Cleanup and destroy GUI properly
     CleanupAndDestroy() {
         try {
-            ; Clear any remaining timers that might reference GUI controls
-            ; Note: SetTimer with negative values are one-shot, so no need to clear them
+            ; Clear performance resources to prevent memory leaks
+            this.CleanupPerformanceResources()
+            
+            ; Cleanup external debug window
+            try {
+                if (this.HasProp("DebugGUI") && IsObject(this.DebugGUI)) {
+                    this.DebugGUI.Destroy()
+                    this.DeleteProp("DebugGUI")
+                }
+                if (this.HasProp("DebugLogEdit")) {
+                    this.DeleteProp("DebugLogEdit")
+                }
+            } catch {
+                ; Ignore debug window cleanup errors
+            }
             
             ; Mark GUI as being destroyed to prevent further access
             if (IsObject(this.GUI)) {
                 ; Remove all property references to prevent access after destruction
-                if (this.GUI.HasProp("debugLog"))
-                    this.GUI.DeleteProp("debugLog")
+                if (this.GUI.HasProp("debugStatus"))
+                    this.GUI.DeleteProp("debugStatus")
                 if (this.GUI.HasProp("statusText"))
                     this.GUI.DeleteProp("statusText")
                 if (this.GUI.HasProp("engineStatus"))

@@ -17,7 +17,7 @@ A collection of productivity tools and utilities built with AutoHotkey v2.
 - **Email & Password Manager**: Generate secure credentials, masked emails, and usernames
 - **QR Code Reader**: Scan and decode QR codes from screen captures
 - **WiFi Reconnect**: Automated WiFi connection management
-- **Windows File Integrity**: System file verification and repair tools
+
 - **Customizable Hotkeys**: Global shortcuts for common tasks
 - **Modern UI**: Clean, consistent interface across all tools
 
@@ -41,7 +41,7 @@ AHK-V2-Tools/
 │   │   ├── EmailPasswordManager.ahk
 │   │   ├── QRReader.ahk
 │   │   ├── WiFiReconnect.ahk
-│   │   └── WindowsFileIntegrity.ahk
+
 │   ├── data/                    # Plugin data and configuration
 │   │   └── plugins/
 │   │       ├── autocompletion_custom.ini    # Custom autocompletion entries
@@ -222,11 +222,7 @@ class YourPluginNamePlugin extends Plugin {
 - Configurable retry intervals
 - Network status notifications
 
-### Windows File Integrity Plugin
-- System file verification (SFC)
-- DISM health checking
-- Automated repair workflows
-- Administrative privilege handling
+
 
 ## License
 

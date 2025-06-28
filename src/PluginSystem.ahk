@@ -85,14 +85,7 @@ class PluginManager {
             ; Plugin not available or error loading
         }
         
-        ; Load Windows File Integrity plugin
-        try {
-            plugin := WindowsFileIntegrityPlugin()
-            this.RegisterPlugin(plugin)
-            pluginCount++
-        } catch as e {
-            ; Plugin not available or error loading
-        }
+
         
         ; Load Wi-Fi Reconnect plugin
         try {

@@ -40,3 +40,6 @@ src/cache/
 
 # Nested duplicate directories
 src/src/ 
+
+# Python virtual environments
+qr_venv/

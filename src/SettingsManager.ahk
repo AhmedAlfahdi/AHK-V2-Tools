@@ -498,7 +498,7 @@ class SettingsManager {
             "PowerOptions", ["System Power Options", "System"],
             "HourlyChime", ["Toggle Hourly Chime", "System"],
             "Calculator", ["Open Calculator", "System"],
-            "FileIntegrityCheck", ["Windows File Integrity Plugin", "Plugin"],
+            
             "DuckDuckGoSearch", ["DuckDuckGo Search", "Search"],
             "PerplexitySearch", ["Perplexity Search", "Search"],
             "WolframSearch", ["WolframAlpha Search", "Search"],
@@ -691,7 +691,7 @@ class SettingsManager {
             "System Power Options", "PowerOptions",
             "Toggle Hourly Chime", "HourlyChime",
             "Open Calculator", "Calculator",
-            "Windows File Integrity Plugin", "FileIntegrityCheck",
+
             "DuckDuckGo Search", "DuckDuckGoSearch",
             "Perplexity Search", "PerplexitySearch",
             "WolframAlpha Search", "WolframSearch",

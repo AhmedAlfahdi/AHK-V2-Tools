@@ -191,7 +191,7 @@ class AutoCompletionPlugin extends Plugin {
     ; Show the AutoCompletion Manager
     ShowAutoCompletionManager() {
         ; Create the autocompletion manager GUI
-        managerGui := Gui("+Resize +MaximizeBox", "AutoCompletion Manager - " this.Dictionary.Count " entries loaded")
+        managerGui := Gui("+AlwaysOnTop +Resize +MaximizeBox", "AutoCompletion Manager - " this.Dictionary.Count " entries loaded")
         managerGui.SetFont("s9", "Segoe UI")
         
         ; Instructions

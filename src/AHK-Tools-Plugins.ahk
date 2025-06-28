@@ -211,7 +211,7 @@ try {
 }
 
 try {
-    #Include plugins\WindowsFileIntegrity.ahk
+    
 } catch as e {
     ; Plugin not available, continue without it
 }
@@ -848,7 +848,7 @@ ShowHelpDialog() {
     
     pluginsLV.Add("", "Alt + C", "Currency Converter (Auto-detects $100, €50, etc.)", "")
     pluginsLV.Add("", "Ctrl + Alt + A", "Auto Completion Plugin", "")
-    pluginsLV.Add("", "Win + F12", "File Integrity Check (DISM, SFC)", "🔐")
+    
     pluginsLV.Add("", "Win + F3", "Wi-Fi Reconnect & DNS Flush", "🔐")
     pluginsLV.Add("", "Win + F2", "Toggle Numpad Mode", "")
     pluginsLV.Add("", "Win + F4", "Hourly Chime Toggle", "")
@@ -941,7 +941,7 @@ SetupDynamicHotkeys() {
         "PowerOptions", (*) => ShowPowerOptions(),
         "HourlyChime", (*) => ToggleHourlyChime(),
         "Calculator", (*) => Run("calc.exe"),
-        "FileIntegrityCheck", (*) => CheckFileIntegrity(),
+
         "DuckDuckGoSearch", (*) => DuckDuckGoSearch(),
         "PerplexitySearch", (*) => PerplexitySearch(),
         "WolframSearch", (*) => WolframSearch(),
@@ -983,7 +983,7 @@ ClearDynamicHotkeys() {
     hotkeyNames := [
         "ShowHelp", "ShowSettings", "SuspendScript", "AdminTerminal", "ToggleNumpad",
         "WiFiReconnect", "ForceQuit", "PowerOptions", "HourlyChime", "Calculator",
-        "FileIntegrityCheck", "DuckDuckGoSearch", "PerplexitySearch", "WolframSearch",
+        "DuckDuckGoSearch", "PerplexitySearch", "WolframSearch",
         "OpenInEditor", "GameDatabaseSearch", "OpenURL", "OpenInNotepad",
         "AutoCompletion"
     ]
@@ -1111,27 +1111,7 @@ ToggleHourlyChime() {
     }
 }
 
-CheckFileIntegrity() {
-    global g_startupComplete
-    
-    ; Startup protection - ignore if called during startup
-    if (!g_startupComplete) {
-        return
-    }
-    
-    ; Call the Windows File Integrity plugin
-    global g_pluginManager
-    if (g_pluginManager && g_pluginManager.Plugins.Has("Windows File Integrity")) {
-        plugin := g_pluginManager.Plugins["Windows File Integrity"]
-        if (plugin.Enabled) {
-            plugin.Execute()
-        } else {
-            SafeMsgBox("Windows File Integrity plugin is disabled. Enable it in Settings > Plugins.", "Plugin Disabled", "Icon!")
-        }
-    } else {
-        SafeMsgBox("Windows File Integrity plugin not found.", "Plugin Error", "Iconx")
-    }
-}
+
 
 OpenSelectedInEditor() {
     savedClipboard := ClipboardAll()
@@ -1322,72 +1302,7 @@ PlayHourlyChime() {
 
 ; Remaining hardcoded hotkeys removed - now using dynamic system
 {
-    if !CheckAdminRequired()
-        return
 
-    selectGui := Gui()
-    selectGui.Opt("+AlwaysOnTop +ToolWindow")
-    selectGui.SetFont("s10", "Segoe UI")
-    selectGui.Title := "AHK-Tools.ahk"
-
-    selectGui.Add("Text", "w400", "Windows File Integrity Check")
-    selectGui.Add("Text", "w400", "Select the type of check to perform:")
-
-    ; Only the first radio in the group should have "Group"
-    selectGui.Add("Radio", "vCheckType Group checked", "Quick Check (DISM /ScanHealth) - Basic system file check")
-    selectGui.Add("Radio",, "Full Check (DISM /CheckHealth) - Detailed system file check")
-    selectGui.Add("Radio",, "Repair Check (DISM /RestoreHealth) - Attempt to repair system files")
-    selectGui.Add("Radio",, "SFC Scan (sfc /scannow) - System File Checker scan")
-    selectGui.Add("Radio",, "Complete Check (DISM + SFC) - Full repair and verification (recommended)")
-
-    btnStart := selectGui.Add("Button", "xm w100", "Start Check")
-    btnStart.OnEvent("Click", StartCheck)
-    btnCancel := selectGui.Add("Button", "x+10 w100", "Cancel")
-    btnCancel.OnEvent("Click", (*) => selectGui.Destroy())
-    selectGui.OnEvent("Escape", (*) => selectGui.Destroy())
-    selectGui.Show()
-
-    StartCheck(*) {
-        try {
-            checkType := selectGui["CheckType"].Value
-            if (!checkType)
-                checkType := 1
-            selectGui.Destroy()
-
-            progressGui := Gui()
-            progressGui.Opt("+AlwaysOnTop +ToolWindow")
-            progressGui.SetFont("s10", "Segoe UI")
-            progressGui.Add("Text", "w400", "Running Windows File Integrity Check...")
-            progressGui.Add("Text", "w400", "This may take several minutes. Please wait.")
-            progressGui.Show()
-
-            command := ""
-            switch checkType {
-                case 1:
-                    command := "DISM.exe /Online /Cleanup-Image /ScanHealth"
-                case 2:
-                    command := "DISM.exe /Online /Cleanup-Image /CheckHealth"
-                case 3:
-                    command := "DISM.exe /Online /Cleanup-Image /RestoreHealth"
-                case 4:
-                    command := "sfc /scannow"
-                case 5:
-                    command := "DISM.exe /Online /Cleanup-Image /RestoreHealth & sfc /scannow"
-            }
-
-            try {
-                psCmd := '*RunAs powershell.exe -WindowStyle Normal -Command "Start-Process cmd -ArgumentList "/k ' command '\" -Verb RunAs"'
-                Run(psCmd)
-            } catch as e {
-                MsgBox "Error running command: " e.Message, "Error", "Iconx"
-            }
-
-            progressGui.Destroy()
-                    ShowMouseTooltip("File integrity check completed", 2000)
-        } catch as e {
-            MsgBox "An error occurred: " e.Message, "Error", "Iconx"
-        }
-    }
 }
 
 ; =================== SEARCH AND TEXT PROCESSING FUNCTIONS ===================

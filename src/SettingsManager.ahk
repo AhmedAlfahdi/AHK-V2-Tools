@@ -71,7 +71,7 @@ class SettingsManager {
             "SuspendScript", "~#Delete",
             "AdminTerminal", "#Enter",
             "ToggleNumpad", "#F2",
-            "WiFiReconnect", "#F3",
+
             "ForceQuit", "#q",
             "PowerOptions", "#x",
             "HourlyChime", "#F4",
@@ -87,7 +87,7 @@ class SettingsManager {
             "OpenInEditor", "!e",
             "GameDatabaseSearch", "!g",
             "OpenURL", "!w",
-            "OpenInNotepad", "!t",
+            "RunCommand", "!t",
             
             ; Plugin hotkeys
             "CurrencyConverter", "!c",
@@ -493,7 +493,7 @@ class SettingsManager {
             "SuspendScript", ["Suspend/Resume Script", "System"],
             "AdminTerminal", ["Open Admin Terminal", "System"],
             "ToggleNumpad", ["Toggle Numpad Mode", "System"],
-            "WiFiReconnect", ["Wi-Fi Reconnect Plugin", "Plugin"],
+
             "ForceQuit", ["Force Quit Application", "System"],
             "PowerOptions", ["System Power Options", "System"],
             "HourlyChime", ["Toggle Hourly Chime", "System"],
@@ -505,7 +505,7 @@ class SettingsManager {
             "OpenInEditor", ["Open Selected Text in Editor", "Text/File"],
             "GameDatabaseSearch", ["Search Game Databases", "Search"],
             "OpenURL", ["Open Selected URL", "Text/File"],
-            "OpenInNotepad", ["Open Selected Text in Notepad", "Text/File"],
+            "RunCommand", ["Run Selected Command (CMD/PowerShell)", "Text/File"],
             "CurrencyConverter", ["Currency Converter Plugin", "Plugin"],
             "AutoCompletion", ["Auto Completion Plugin", "Plugin"]
         )
@@ -686,7 +686,7 @@ class SettingsManager {
             "Suspend/Resume Script", "SuspendScript",
             "Open Admin Terminal", "AdminTerminal",
             "Toggle Numpad Mode", "ToggleNumpad",
-            "Wi-Fi Reconnect Plugin", "WiFiReconnect",
+
             "Force Quit Application", "ForceQuit",
             "System Power Options", "PowerOptions",
             "Toggle Hourly Chime", "HourlyChime",
@@ -698,7 +698,7 @@ class SettingsManager {
             "Open Selected Text in Editor", "OpenInEditor",
             "Search Game Databases", "GameDatabaseSearch",
             "Open Selected URL", "OpenURL",
-            "Open Selected Text in Notepad", "OpenInNotepad",
+            "Run Selected Command (CMD/PowerShell)", "RunCommand",
             "Currency Converter Plugin", "CurrencyConverter",
             "Auto Completion Plugin", "AutoCompletion"
         )

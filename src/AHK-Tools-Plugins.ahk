@@ -211,28 +211,12 @@ try {
 }
 
 try {
-    
+    #Include plugins\UnitConverter.ahk
 } catch as e {
     ; Plugin not available, continue without it
 }
 
-try {
-    #Include plugins\WiFiReconnect.ahk
-} catch as e {
-    ; Plugin not available, continue without it
-}
-
-try {
-    #Include plugins\QRReader.ahk
-} catch as e {
-    ; Plugin not available, continue without it
-}
-
-try {
-    #Include plugins\EmailPasswordManager.ahk
-} catch as e {
-    ; Plugin not available, continue without it
-}
+; WiFiReconnect, QRReader, and EmailPasswordManager plugins have been deprecated
 
 ; =================== GLOBAL VARIABLES ===================
 ; Global variables for plugin and settings management
@@ -848,8 +832,9 @@ ShowHelpDialog() {
     
     pluginsLV.Add("", "Alt + C", "Currency Converter (Auto-detects $100, €50, etc.)", "")
     pluginsLV.Add("", "Ctrl + Alt + A", "Auto Completion Plugin", "")
+    pluginsLV.Add("", "Alt + U", "Unit Converter (SI & Imperial units)", "")
     
-    pluginsLV.Add("", "Win + F3", "Wi-Fi Reconnect & DNS Flush", "🔐")
+
     pluginsLV.Add("", "Win + F2", "Toggle Numpad Mode", "")
     pluginsLV.Add("", "Win + F4", "Hourly Chime Toggle", "")
     
@@ -936,7 +921,7 @@ SetupDynamicHotkeys() {
         "SuspendScript", (*) => ToggleSuspend(),
         "AdminTerminal", (*) => OpenAdminTerminal(),
         "ToggleNumpad", (*) => ToggleNumpadMode(),
-        "WiFiReconnect", (*) => WiFiReconnectAndFlush(),
+
         "ForceQuit", (*) => ForceQuitApplication(),
         "PowerOptions", (*) => ShowPowerOptions(),
         "HourlyChime", (*) => ToggleHourlyChime(),
@@ -948,8 +933,8 @@ SetupDynamicHotkeys() {
         "OpenInEditor", (*) => OpenSelectedInEditor(),
         "GameDatabaseSearch", (*) => SearchGameDatabases(),
         "OpenURL", (*) => OpenSelectedURL(),
-        "OpenInNotepad", (*) => OpenSelectedInNotepad(),
-        "AutoCompletion", (*) => ShowAutoCompletion()
+        "AutoCompletion", (*) => ShowAutoCompletion(),
+        "RunCommand", (*) => RunSelectedCommand()
     )
     
     ; Set up each hotkey from settings
@@ -982,10 +967,10 @@ ClearDynamicHotkeys() {
     ; List of all possible hotkey names
     hotkeyNames := [
         "ShowHelp", "ShowSettings", "SuspendScript", "AdminTerminal", "ToggleNumpad",
-        "WiFiReconnect", "ForceQuit", "PowerOptions", "HourlyChime", "Calculator",
+        "ForceQuit", "PowerOptions", "HourlyChime", "Calculator",
         "DuckDuckGoSearch", "PerplexitySearch", "WolframSearch",
         "OpenInEditor", "GameDatabaseSearch", "OpenURL", "OpenInNotepad",
-        "AutoCompletion"
+        "AutoCompletion", "UnitConverter"
     ]
     
     ; Clear each hotkey
@@ -1039,27 +1024,7 @@ ToggleNumpadMode() {
     }
 }
 
-WiFiReconnectAndFlush() {
-    global g_startupComplete
-    
-    ; Startup protection - ignore if called during startup
-    if (!g_startupComplete) {
-        return
-    }
-    
-    ; Call the Wi-Fi Reconnect plugin
-    global g_pluginManager
-    if (g_pluginManager && g_pluginManager.Plugins.Has("Wi-Fi Reconnect")) {
-        plugin := g_pluginManager.Plugins["Wi-Fi Reconnect"]
-        if (plugin.Enabled) {
-            plugin.Execute()
-        } else {
-            SafeMsgBox("Wi-Fi Reconnect plugin is disabled. Enable it in Settings > Plugins.", "Plugin Disabled", "Icon!")
-        }
-    } else {
-        SafeMsgBox("Wi-Fi Reconnect plugin not found.", "Plugin Error", "Iconx")
-    }
-}
+
 
 ForceQuitApplication() {
     activePID := WinGetPID("A")
@@ -1205,32 +1170,7 @@ OpenSelectedURL() {
     savedClipboard := ""
 }
 
-OpenSelectedInNotepad() {
-    savedClipboard := ClipboardAll()
-    A_Clipboard := ""
 
-    Send "^c"
-    if !ClipWait(0.5) {
-        MsgBox "Failed to copy text to clipboard.", "Error", "Iconx"
-        A_Clipboard := savedClipboard
-        return
-    }
-
-    selectedText := A_Clipboard
-    tempFile := A_Temp "\SelectedText.txt"
-    try FileDelete(tempFile)
-    FileAppend selectedText, tempFile
-
-    try {
-        Run "notepad.exe '" tempFile "'"
-        ShowMouseTooltip("Opening selected text in Notepad...", 1500)
-    } catch as e {
-        MsgBox "Failed to open Notepad: " e.Message, "Error", "Iconx"
-    }
-
-    A_Clipboard := savedClipboard
-    savedClipboard := ""
-}
 
 ShowAutoCompletion() {
     ; Trigger the auto completion plugin
@@ -1567,6 +1507,288 @@ ShowSettingsFromTray() {
     } else {
         ShowSettings()  ; Fallback
     }
+}
+
+; =================== COMMAND RUNNER ===================
+; Run selected command with admin/non-admin choice
+RunSelectedCommand() {
+    ; Get selected text
+    selectedText := ""
+    savedClip := ClipboardAll()
+    A_Clipboard := ""
+    Send "^c"
+    if ClipWait(0.3) {
+        selectedText := Trim(A_Clipboard)
+    }
+    A_Clipboard := savedClip
+    
+    if (!selectedText) {
+        ShowMouseTooltip("No command selected", 2000)
+        return
+    }
+    
+    ; Detect command type and show appropriate dialog
+    commandType := DetectCommandType(selectedText)
+    
+    ; If detection is unclear, ask user to choose
+    if (commandType == "Unknown") {
+        commandType := ShowCommandTypeChoiceDialog(selectedText)
+        if (!commandType) {
+            return  ; User cancelled
+        }
+    }
+    
+    ShowCommandExecutionDialog(selectedText, commandType)
+}
+
+; Detect if text is CMD or PowerShell command
+DetectCommandType(text) {
+    ; Convert to lowercase for comparison
+    lowerText := StrLower(text)
+    
+    ; PowerShell-specific patterns (expanded)
+    psPatterns := [
+        "get-", "set-", "new-", "remove-", "invoke-", "start-", "stop-", "restart-",
+        "test-", "measure-", "select-", "where-", "foreach-", "sort-", "group-",
+        "$_", "$env:", "$home", "$profile", "$pshome", "$pwd", "$args", "$input",
+        "write-host", "write-output", "write-error", "write-warning", "write-verbose",
+        "import-module", "export-module", "get-module", "get-command", "get-help",
+        "get-childitem", "get-content", "set-content", "add-content", "clear-content",
+        "get-process", "stop-process", "start-process", "get-service", "start-service", "stop-service",
+        "test-path", "resolve-path", "split-path", "join-path", "push-location", "pop-location",
+        "-eq ", "-ne ", "-lt ", "-le ", "-gt ", "-ge ", "-like ", "-notlike ", "-match ", "-notmatch ",
+        "-contains ", "-notcontains ", "-in ", "-notin ", "-replace ", "-split ", "-join ",
+        "-and ", "-or ", "-not ", "-xor ", "-band ", "-bor ", "-bnot ", "-bxor ",
+        "| where", "| select", "| sort", "| group", "| measure", "| foreach", "| out-",
+        ".ps1", "-executionpolicy", "-noprofile", "-command", "-file",
+        ; PowerShell aliases (commonly used)
+        " iwr ", " irm ", " iex ", " gcm ", " gci ", " gi ", " gm ", " gp ", " gwmi ",
+        " sal ", " sls ", " tee ", " cat ", " ls ", " pwd ", " cd ", " mv ", " cp ",
+        " rm ", " wget ", " curl ",
+        ; PowerShell-specific syntax
+        "| %", "-f ", "@{", "@(", "$(",  "$(", "[pscustomobject]", "[system.",
+        "foreach-object", "where-object", "-property", "-expandproperty"
+    ]
+    
+    ; Strong PowerShell indicators (high confidence)
+    strongPsPatterns := [
+        "invoke-restmethod", "invoke-webrequest", "invoke-expression",
+        "$_.", "| %", "| foreach", "| where",
+        "@{", "@(", "[pscustomobject]", "-property", "-expandproperty"
+    ]
+    
+    ; Check for PowerShell aliases at the beginning or after spaces
+    psAliases := ["iwr", "irm", "iex", "gcm", "gci", "gi", "gm", "gp", "gwmi"]
+    for alias in psAliases {
+        ; Check if alias appears at the start of command or after whitespace
+        if RegExMatch(lowerText, "(^|\s)" . alias . "(\s|$)") {
+            return "PowerShell"
+        }
+    }
+    
+    ; Check for strong PowerShell patterns first
+    for pattern in strongPsPatterns {
+        if InStr(lowerText, pattern) {
+            return "PowerShell"
+        }
+    }
+    
+    ; Check for general PowerShell patterns
+    psScore := 0
+    for pattern in psPatterns {
+        if InStr(lowerText, pattern) {
+            psScore++
+        }
+    }
+    
+    ; CMD-specific patterns
+    cmdPatterns := [
+        "dir ", "cd ", "md ", "rd ", "del ", "copy ", "move ", "ren ", "type ", "find ",
+        "findstr ", "attrib ", "cacls ", "xcopy ", "robocopy ", "tasklist ", "taskkill ",
+        "net ", "netstat ", "ping ", "ipconfig ", "nslookup ", "tracert ", "arp ",
+        "systeminfo ", "driverquery ", "wmic ", "reg ", "sc ", "schtasks ",
+        "echo ", "set ", "if ", "for ", "goto ", "call ", "pause ", "cls ", "exit ",
+        "path ", "prompt ", "title ", "color ", "doskey ", "more ", "sort ", "fc ",
+        "@echo", "%%", "%1", "%2", "%~", "%cd%", "%date%", "%time%", "%username%",
+        ".bat", ".cmd", "&& ", "|| ", "& ", "> ", ">> ", "< ", "| ", "^"
+    ]
+    
+    ; Check for CMD patterns
+    cmdScore := 0
+    for pattern in cmdPatterns {
+        if InStr(lowerText, pattern) {
+            cmdScore++
+        }
+    }
+    
+    ; Check file extensions in the command
+    if RegExMatch(lowerText, "\.(exe|com|bat|cmd|msi|ps1)\b") {
+        return InStr(lowerText, ".ps1") ? "PowerShell" : "CMD"
+    }
+    
+    ; If starts with common PowerShell cmdlet pattern
+    if RegExMatch(lowerText, "^[a-z]+-[a-z]+") {
+        return "PowerShell"
+    }
+    
+    ; Scoring logic
+    if (psScore > 0 && cmdScore == 0) {
+        return "PowerShell"
+    } else if (cmdScore > 0 && psScore == 0) {
+        return "CMD"
+    } else if (psScore > cmdScore) {
+        return "PowerShell"
+    } else if (cmdScore > psScore) {
+        return "CMD"
+    }
+    
+    ; If unclear, return "Unknown" to trigger user choice
+    return "Unknown"
+}
+
+; Show dialog when command type detection is unclear
+ShowCommandTypeChoiceDialog(command) {
+    ; Create GUI for command type choice
+    typeGui := Gui("+AlwaysOnTop", "Choose Command Type")
+    typeGui.SetFont("s10", "Segoe UI")
+    
+    ; Command display
+    typeGui.Add("Text", "x10 y10 w420", "Unable to automatically detect command type.")
+    typeGui.Add("Text", "x10 y35", "Command:")
+    typeGui.Add("Edit", "x10 y55 w420 h60 ReadOnly VScroll", command)
+    
+    ; Type selection
+    typeGui.Add("Text", "x10 y130", "Please choose the command type:")
+    
+    ; PowerShell button
+    psBtn := typeGui.Add("Button", "x10 y155 w200 h40", "🔷 PowerShell")
+    psBtn.OnEvent("Click", (*) => SetChoice("PowerShell"))
+    
+    ; CMD button
+    cmdBtn := typeGui.Add("Button", "x220 y155 w200 h40", "⚫ Command Prompt (CMD)")
+    cmdBtn.OnEvent("Click", (*) => SetChoice("CMD"))
+    
+    ; Cancel button
+    cancelBtn := typeGui.Add("Button", "x10 y205 w410 h30", "❌ Cancel")
+    cancelBtn.OnEvent("Click", (*) => SetChoice(""))
+    
+    ; Hints
+    typeGui.Add("Text", "x10 y245 w420 c0x666666", "Hint: PowerShell commands often use cmdlets (Get-, Set-, etc.) or aliases (iwr, irm, iex). CMD commands use traditional DOS commands (dir, copy, etc.).")
+    
+    ; Result variable
+    chosenType := ""
+    
+    ; Function to set choice and close
+    SetChoice(choice) {
+        chosenType := choice
+        typeGui.Destroy()
+    }
+    
+    ; Event handlers
+    typeGui.OnEvent("Close", (*) => SetChoice(""))
+    typeGui.OnEvent("Escape", (*) => SetChoice(""))
+    
+    ; Show GUI and wait for choice
+    typeGui.Show("w440 h290")
+    
+    ; Wait for user choice
+    while typeGui.Hwnd {
+        Sleep(50)
+    }
+    
+    return chosenType
+}
+
+; Show dialog to choose execution method
+ShowCommandExecutionDialog(command, commandType) {
+    ; Create GUI for command execution choice
+    cmdGui := Gui("+AlwaysOnTop", "Run Command - " . commandType)
+    cmdGui.SetFont("s10", "Segoe UI")
+    
+    ; Command display
+    cmdGui.Add("Text", "x10 y10", "Command Type: " . commandType)
+    cmdGui.Add("Text", "x10 y35", "Command:")
+    cmdGui.Add("Edit", "x10 y55 w400 h60 ReadOnly VScroll", command)
+    
+    ; Execution options
+    cmdGui.Add("Text", "x10 y130", "Choose execution method:")
+    
+    ; Admin button
+    adminBtn := cmdGui.Add("Button", "x10 y155 w180 h40", "🛡️ Run as Administrator")
+    adminBtn.OnEvent("Click", (*) => ExecuteCommand(command, commandType, true, cmdGui))
+    
+    ; Normal button
+    normalBtn := cmdGui.Add("Button", "x200 y155 w180 h40", "👤 Run as Normal User")
+    normalBtn.OnEvent("Click", (*) => ExecuteCommand(command, commandType, false, cmdGui))
+    
+    ; Cancel button
+    cancelBtn := cmdGui.Add("Button", "x390 y155 w40 h40", "❌")
+    cancelBtn.OnEvent("Click", (*) => cmdGui.Destroy())
+    
+    ; Warning for potentially dangerous commands
+    if ContainsDangerousCommand(command) {
+        warningText := cmdGui.Add("Text", "x10 y205 w420 cRed", "⚠️ Warning: This command may modify system files or settings")
+        warningText.SetFont("s9 Bold")
+    }
+    
+    ; Event handlers
+    cmdGui.OnEvent("Close", (*) => cmdGui.Destroy())
+    cmdGui.OnEvent("Escape", (*) => cmdGui.Destroy())
+    
+    ; Show GUI
+    cmdGui.Show("w440 h" . (ContainsDangerousCommand(command) ? "240" : "210"))
+}
+
+; Execute the command with chosen privileges
+ExecuteCommand(command, commandType, asAdmin, gui) {
+    gui.Destroy()
+    
+    ; Prepare execution parameters with pause to prevent auto-exit
+    if (commandType == "PowerShell") {
+        executable := "powershell.exe"
+        ; Add Read-Host to prevent PowerShell from closing
+        pausedCommand := command . "; Write-Host '`nPress Enter to exit...' -ForegroundColor Yellow; Read-Host"
+        params := "-NoProfile -ExecutionPolicy Bypass -Command `"" . pausedCommand . "`""
+    } else {
+        executable := "cmd.exe"
+        ; Add pause to prevent CMD from closing
+        pausedCommand := command . " & echo. & echo Press any key to exit... & pause >nul"
+        params := "/c `"" . pausedCommand . "`""
+    }
+    
+    try {
+        if (asAdmin) {
+            ; Run as administrator
+            Run("*RunAs " . executable . " " . params, , , &pid)
+            ShowMouseTooltip("Command executed as Administrator (" . commandType . ")", 3000)
+        } else {
+            ; Run as normal user
+            Run(executable . " " . params, , , &pid)
+            ShowMouseTooltip("Command executed as Normal User (" . commandType . ")", 3000)
+        }
+    } catch as e {
+        SafeMsgBox("Failed to execute command: " . e.Message, "Execution Error", "Iconx")
+    }
+}
+
+; Check if command contains potentially dangerous operations
+ContainsDangerousCommand(command) {
+    dangerousPatterns := [
+        "format ", "del /", "rd /", "rmdir /", "remove-item", "rm -rf",
+        "reg delete", "reg add", "regedit", "bcdedit", "diskpart",
+        "net user", "net localgroup", "cacls", "icacls", "takeown",
+        "schtasks /delete", "sc delete", "wmic", "powercfg", "shutdown",
+        "restart-computer", "stop-computer", "disable-computerrestore",
+        "clear-eventlog", "remove-windowsfeature", "uninstall-windowsfeature"
+    ]
+    
+    lowerCommand := StrLower(command)
+    for pattern in dangerousPatterns {
+        if InStr(lowerCommand, pattern) {
+            return true
+        }
+    }
+    return false
 }
 
 ; =================== TEST HOTKEY ===================

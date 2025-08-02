@@ -267,7 +267,7 @@ Execute() {
 ## 📝 Code Style Guidelines
 
 ### Naming Conventions
-- **Classes**: PascalCase (`EmailPasswordManager`)
+- **Classes**: PascalCase (`CurrencyConverter`)
 - **Methods**: PascalCase (`ShowSettings`)
 - **Variables**: camelCase (`settingsGui`)
 - **Constants**: UPPER_CASE (`MAX_RETRIES`)

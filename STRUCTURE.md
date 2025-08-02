@@ -15,14 +15,12 @@ AHK-V2-Tools/
     ├── 📁 plugins/                 # Plugin implementations
     │   ├── 📄 AutoCompletion.ahk   # Text auto-completion plugin
     │   ├── 📄 CurrencyConverter.ahk # Currency conversion plugin
-    │   ├── 📄 EmailPasswordManager.ahk # Email/password management plugin
-    │   ├── 📄 QRReader.ahk         # QR code reading plugin
-    │   ├── 📄 WiFiReconnect.ahk    # Wi-Fi reconnection plugin
+    │   ├── 📄 UnitConverter.ahk    # SI & Imperial unit conversion plugin
+
     
     ├── 📁 data/                    # User data storage
     │   └── 📁 plugins/             # Plugin-specific data files
-    │       ├── 📄 autocompletion_custom.ini    # Custom autocompletion entries
-    │       └── 📄 emailpassword_settings.ini   # Email/password plugin settings
+    │       └── 📄 autocompletion_custom.ini    # Custom autocompletion entries
     ├── 📁 cache/                   # Temporary cache files
     │   └── 📄 currency_rates.json  # Cached currency conversion rates
     └── 📁 credentials/             # Generated credentials (user-created)
@@ -60,9 +58,8 @@ Each plugin is a self-contained `.ahk` file in the `plugins/` directory that imp
 |--------|---------|----------------|
 | **AutoCompletion** | Text expansion and auto-completion | No |
 | **CurrencyConverter** | Real-time currency conversion | No |
-| **EmailPasswordManager** | Generate emails, usernames, passwords | No |
-| **QRReader** | Read QR codes from screen/clipboard | No |
-| **WiFiReconnect** | Wi-Fi troubleshooting and DNS flush | Yes |
+| **UnitConverter** | Professional unit converter (300+ units, 25 categories) | No |
+
 
 
 ## 📁 File Types & Purposes
@@ -77,7 +74,7 @@ Each plugin is a self-contained `.ahk` file in the `plugins/` directory that imp
 
 ### Data Files
 - **`data/plugins/autocompletion_custom.ini`** - User-defined text expansions
-- **`data/plugins/emailpassword_settings.ini`** - Email/password plugin configuration
+
 
 ## 🔒 Security Considerations
 
@@ -88,7 +85,7 @@ Each plugin is a self-contained `.ahk` file in the `plugins/` directory that imp
 
 ### Admin Privileges
 Some plugins require administrator privileges:
-- **Wi-Fi Reconnect**: Network interface control
+
 
 
 ## 🛠️ Development

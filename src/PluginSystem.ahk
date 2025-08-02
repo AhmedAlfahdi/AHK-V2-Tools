@@ -87,32 +87,16 @@ class PluginManager {
         
 
         
-        ; Load Wi-Fi Reconnect plugin
+        ; Load Unit Converter plugin
         try {
-            plugin := WiFiReconnectPlugin()
+            plugin := UnitConverterPlugin()
             this.RegisterPlugin(plugin)
             pluginCount++
         } catch as e {
             ; Plugin not available or error loading
         }
         
-        ; Load QR Reader plugin
-        try {
-            plugin := QRReaderPlugin()
-            this.RegisterPlugin(plugin)
-            pluginCount++
-        } catch as e {
-            ; Plugin not available or error loading
-        }
-        
-        ; Load Email & Password Manager plugin
-        try {
-            plugin := EmailPasswordManagerPlugin()
-            this.RegisterPlugin(plugin)
-            pluginCount++
-        } catch as e {
-            ; Plugin not available or error loading
-        }
+        ; WiFiReconnect, QRReader, and EmailPasswordManager plugins have been deprecated
         
         ; Load saved plugin states after all plugins are loaded
         this.LoadPluginStates()

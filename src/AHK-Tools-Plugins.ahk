@@ -120,6 +120,7 @@ if (SubStr(A_AhkVersion, 1, 1) != "2") {
 ; Global startup protection flag to prevent phantom hotkey triggers
 global g_startupComplete := false
 global g_hotkeysEnabled := false
+global g_scriptSuspended := false
 
 ; Timer to enable hotkeys after startup delay
 global g_enableHotkeysTimer := ""
@@ -691,6 +692,14 @@ SetupTrayMenu() {
         }
     }
     
+    ; Add suspend/resume option
+    global g_scriptSuspended
+    if (g_scriptSuspended) {
+        A_TrayMenu.Add("▶ Resume Script", (*) => ToggleSuspend())
+    } else {
+        A_TrayMenu.Add("⏸ Suspend Script", (*) => ToggleSuspend())
+    }
+    
     ; Add plugin manager menu item if plugins are enabled
     if (CONFIG.enablePlugins) {
         A_TrayMenu.Add("Plugin Manager", (*) => ShowPluginManager())
@@ -901,6 +910,14 @@ ShowHelpDialog() {
 }
 
 ; =================== DYNAMIC HOTKEY SYSTEM ===================
+; Wrapper function to check suspended state before executing hotkey functions
+ExecuteHotkeyFunction(func) {
+    global g_scriptSuspended
+    if (!g_scriptSuspended) {
+        func()
+    }
+}
+
 ; Function to set up dynamic hotkeys based on settings
 SetupDynamicHotkeys() {
     global g_settingsManager, g_startupComplete, g_hotkeysEnabled
@@ -916,25 +933,26 @@ SetupDynamicHotkeys() {
     
     ; Define hotkey mappings - function name to actual function
     hotkeyFunctions := Map(
-        "ShowHelp", (*) => ShowHelpDialog(),
-        "ShowSettings", (*) => ShowSettings(),
+        "ShowHelp", (*) => ExecuteHotkeyFunction((*) => ShowHelpDialog()),
+        "ShowSettings", (*) => ExecuteHotkeyFunction((*) => ShowSettings()),
         "SuspendScript", (*) => ToggleSuspend(),
-        "AdminTerminal", (*) => OpenAdminTerminal(),
-        "ToggleNumpad", (*) => ToggleNumpadMode(),
+        "AdminTerminal", (*) => ExecuteHotkeyFunction((*) => OpenAdminTerminal()),
+        "ToggleNumpad", (*) => ExecuteHotkeyFunction((*) => ToggleNumpadMode()),
 
-        "ForceQuit", (*) => ForceQuitApplication(),
-        "PowerOptions", (*) => ShowPowerOptions(),
-        "HourlyChime", (*) => ToggleHourlyChime(),
-        "Calculator", (*) => Run("calc.exe"),
+        "ForceQuit", (*) => ExecuteHotkeyFunction((*) => ForceQuitApplication()),
+        "PowerOptions", (*) => ExecuteHotkeyFunction((*) => ShowPowerOptions()),
+        "HourlyChime", (*) => ExecuteHotkeyFunction((*) => ToggleHourlyChime()),
+        "Calculator", (*) => ExecuteHotkeyFunction((*) => Run("calc.exe")),
 
-        "DuckDuckGoSearch", (*) => DuckDuckGoSearch(),
-        "PerplexitySearch", (*) => PerplexitySearch(),
-        "WolframSearch", (*) => WolframSearch(),
-        "OpenInEditor", (*) => OpenSelectedInEditor(),
-        "GameDatabaseSearch", (*) => SearchGameDatabases(),
-        "OpenURL", (*) => OpenSelectedURL(),
-        "AutoCompletion", (*) => ShowAutoCompletion(),
-        "RunCommand", (*) => RunSelectedCommand()
+        "DuckDuckGoSearch", (*) => ExecuteHotkeyFunction((*) => DuckDuckGoSearch()),
+        "PerplexitySearch", (*) => ExecuteHotkeyFunction((*) => PerplexitySearch()),
+        "WolframSearch", (*) => ExecuteHotkeyFunction((*) => WolframSearch()),
+        "OpenInEditor", (*) => ExecuteHotkeyFunction((*) => OpenSelectedInEditor()),
+        "GameDatabaseSearch", (*) => ExecuteHotkeyFunction((*) => SearchGameDatabases()),
+        "OpenURL", (*) => ExecuteHotkeyFunction((*) => OpenSelectedURL()),
+        "AutoCompletion", (*) => ExecuteHotkeyFunction((*) => ShowAutoCompletion()),
+        "RunCommand", (*) => ExecuteHotkeyFunction((*) => RunSelectedCommand()),
+        "LibGenBookDownload", (*) => ExecuteHotkeyFunction((*) => LibGenBookDownload())
     )
     
     ; Set up each hotkey from settings
@@ -970,7 +988,7 @@ ClearDynamicHotkeys() {
         "ForceQuit", "PowerOptions", "HourlyChime", "Calculator",
         "DuckDuckGoSearch", "PerplexitySearch", "WolframSearch",
         "OpenInEditor", "GameDatabaseSearch", "OpenURL", "OpenInNotepad",
-        "AutoCompletion", "UnitConverter"
+        "AutoCompletion", "UnitConverter", "LibGenBookDownload"
     ]
     
     ; Clear each hotkey
@@ -992,15 +1010,20 @@ ClearDynamicHotkeys() {
 ; Individual functions for each hotkey action
 
 ToggleSuspend() {
-    static suspended := false
-    suspended := !suspended
-    if suspended {
-        Suspend true
+    global g_scriptSuspended
+    g_scriptSuspended := !g_scriptSuspended
+    if g_scriptSuspended {
+        ; Show suspended state in tray
+        TrayTip("Script Suspended", "AHK Tools is currently suspended. Press Win+Del to resume.")
         ShowMouseTooltip("Script Suspended")
     } else {
-        Suspend false
+        ; Show active state in tray
+        TrayTip("Script Active", "AHK Tools is now active.")
         ShowMouseTooltip("Script Active")
     }
+    
+    ; Refresh tray menu to show correct suspend/resume option
+    SetupTrayMenu()
 }
 
 OpenAdminTerminal() {
@@ -1126,7 +1149,7 @@ SearchGameDatabases() {
         
         Run "https://www.pcgamingwiki.com/w/index.php?search=" searchTerm
         Run "https://cs.rin.ru/forum/search.php?keywords=" searchTerm "&terms=any&author=&sc=1&sf=titleonly&sk=t&sd=d&sr=topics&st=0&ch=300&t=0&submit=Search"
-        Run "https://predb.net/?q=" searchTerm
+        ; Run "https://predb.net/?q=" searchTerm
         Run "https://www.gog-games.to/search/" searchTerm
         
         ShowMouseTooltip("Searching game databases...", 1500)
@@ -1334,6 +1357,36 @@ WolframSearch() {
     
     ; Show confirmation tooltip
     ShowMouseTooltip("Searching with WolframAlpha...", 1000)
+}
+
+LibGenBookDownload() {
+    ; Get selected text or prompt user for search term
+    searchTerm := ""
+    if (A_PriorHotkey = A_ThisHotkey && A_TimeSincePriorHotkey < 400)
+        return  ; Avoid accidental double-triggers
+    
+    ; Try to get selected text first
+    savedClip := ClipboardAll()  ; Save current clipboard
+    A_Clipboard := ""  ; Clear clipboard
+    Send "^c"  ; Copy selected text
+    if ClipWait(0.5) {  ; Wait for clipboard data
+        searchTerm := A_Clipboard
+    }
+    A_Clipboard := savedClip  ; Restore original clipboard
+    
+    ; If no text was selected, prompt user
+    if (searchTerm = "") {
+        searchTerm := InputBox("Enter book title or author:", "LibGen Book Download").Value
+        if (searchTerm = "")  ; User cancelled
+            return
+    }
+    
+    ; Encode the search term and launch browser
+    searchTerm := UrlEncode(searchTerm)
+    Run "https://libgen.li/index.php?req=" searchTerm
+    
+    ; Show confirmation tooltip
+    ShowMouseTooltip("Searching LibGen for books...", 1000)
 }
 
 ; Function to open selected text in editor with language detection (legacy)
@@ -1692,8 +1745,12 @@ ShowCommandTypeChoiceDialog(command) {
     typeGui.Show("w440 h290")
     
     ; Wait for user choice
-    while typeGui.Hwnd {
-        Sleep(50)
+    try {
+        while typeGui.Hwnd {
+            Sleep(50)
+        }
+    } catch {
+        ; GUI was destroyed, continue
     }
     
     return chosenType

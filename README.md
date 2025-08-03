@@ -28,7 +28,13 @@ AHK-V2-Tools/
 │   │   └── UnitConverter.ahk
 │   ├── data/plugins/            # Plugin data
 │   └── cache/                   # Temporary files
+├── scripts/                     # Version control scripts
+│   ├── update_version.ahk       # AutoHotkey version updater
+│   ├── version_control.ps1      # PowerShell version control
+│   └── version.bat              # Batch version control
 ├── README.md
+├── VERSION.md                   # Version management
+├── CHANGELOG.md                 # Change history
 └── UNIT_REFERENCE.md           # Unit converter reference
 ```
 
@@ -44,6 +50,7 @@ AHK-V2-Tools/
 | Ctrl + Alt + A | AutoCompletion Manager |
 | Alt + U | Unit Converter |
 | Alt + T | Run Selected Command (CMD/PowerShell) |
+| Alt + B | LibGen Book Download |
 
 ## Plugins
 
@@ -64,6 +71,12 @@ AHK-V2-Tools/
 - Categories: Length, Weight, Volume, Area, Speed, Energy, Power, Pressure, Temperature, Data Storage, Time, Frequency, Force, Torque, Electrical, Magnetic, Angular, Acceleration, Density, Viscosity, Optical
 - See [UNIT_REFERENCE.md](UNIT_REFERENCE.md) for complete list
 
+### LibGen Book Download
+- Quick access to Library Genesis for book downloads
+- Select book title or author text and press Alt+B
+- Opens LibGen search page with selected text
+- Also works with manual input if no text is selected
+
 ## Settings Manager
 
 Access via Win + F5 or tray menu. Tabs:
@@ -73,6 +86,48 @@ Access via Win + F5 or tray menu. Tabs:
 - Autocompletion: Text expansion settings
 - Performance: Memory and CPU optimization
 - Security: Admin requirements, logging
+
+## Version Control
+
+The project uses a comprehensive version control system with multiple tools:
+
+### Version Management Files
+- **VERSION.md**: Complete version history and strategy
+- **CHANGELOG.md**: Detailed change tracking
+- **scripts/update_version.ahk**: AutoHotkey GUI for version updates
+- **scripts/version_control.ps1**: PowerShell version control automation
+- **scripts/version.bat**: Batch file for easy version operations
+
+### Quick Version Commands
+```bash
+# Show current version info
+version.bat info
+
+# Suggest next version
+version.bat suggest patch
+
+# Update version using GUI
+version.bat update
+
+# Create git tag
+version.bat tag 2.1.1
+
+# Show release checklist
+version.bat checklist 2.1.1
+```
+
+### Version Update Process
+1. **Update version**: `version.bat update` or edit `src/AHK-Tools-Plugins.ahk`
+2. **Test functionality**: Ensure all features work correctly
+3. **Update documentation**: Modify README.md, VERSION.md, CHANGELOG.md
+4. **Create git tag**: `version.bat tag 2.1.1`
+5. **Push to remote**: `git push origin AHK-2.1.1`
+
+### Semantic Versioning
+- **MAJOR.MINOR.PATCH** format (e.g., 2.1.0)
+- **MAJOR**: Breaking changes
+- **MINOR**: New features (backward compatible)
+- **PATCH**: Bug fixes
 
 ## Creating Plugins
 

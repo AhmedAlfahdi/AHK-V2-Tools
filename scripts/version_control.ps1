@@ -14,15 +14,15 @@ $VersionFile = Join-Path $ProjectRoot "VERSION.md"
 $ChangelogFile = Join-Path $ProjectRoot "CHANGELOG.md"
 
 # Colors for output
-$Green = "Green"
-$Yellow = "Yellow"
-$Red = "Red"
-$Cyan = "Cyan"
+$Green = [System.ConsoleColor]::Green
+$Yellow = [System.ConsoleColor]::Yellow
+$Red = [System.ConsoleColor]::Red
+$Cyan = [System.ConsoleColor]::Cyan
 
 function Write-ColorOutput {
     param(
         [string]$Message,
-        [string]$Color = "White"
+        [System.ConsoleColor]$Color = [System.ConsoleColor]::White
     )
     Write-Host $Message -ForegroundColor $Color
 }
@@ -147,9 +147,9 @@ switch ($Action.ToLower()) {
     }
     "suggest" {
         $currentVersion = Get-CurrentVersion
-        $suggestedVersion = Suggest-NextVersion $currentVersion $Type
+        $suggestedVersion = Suggest-NextVersion $currentVersion $Version
         Write-ColorOutput "Current Version: $currentVersion" $Green
-        Write-ColorOutput "Suggested Version ($Type): $suggestedVersion" $Yellow
+        Write-ColorOutput "Suggested Version ($Version): $suggestedVersion" $Yellow
     }
     "tag" {
         if ([string]::IsNullOrEmpty($Version)) {

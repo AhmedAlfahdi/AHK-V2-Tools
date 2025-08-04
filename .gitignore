@@ -43,3 +43,7 @@ src/src/
 
 # Python virtual environments
 qr_venv/
+
+# Build and release directories
+scripts/
+releases/

@@ -952,7 +952,8 @@ SetupDynamicHotkeys() {
         "OpenURL", (*) => ExecuteHotkeyFunction((*) => OpenSelectedURL()),
         "AutoCompletion", (*) => ExecuteHotkeyFunction((*) => ShowAutoCompletion()),
         "RunCommand", (*) => ExecuteHotkeyFunction((*) => RunSelectedCommand()),
-        "LibGenBookDownload", (*) => ExecuteHotkeyFunction((*) => LibGenBookDownload())
+        "LibGenBookDownload", (*) => ExecuteHotkeyFunction((*) => LibGenBookDownload()),
+        "YouTubeSearch", (*) => ExecuteHotkeyFunction((*) => YouTubeSearch())
     )
     
     ; Set up each hotkey from settings
@@ -988,7 +989,7 @@ ClearDynamicHotkeys() {
         "ForceQuit", "PowerOptions", "HourlyChime", "Calculator",
         "DuckDuckGoSearch", "PerplexitySearch", "WolframSearch",
         "OpenInEditor", "GameDatabaseSearch", "OpenURL", "OpenInNotepad",
-        "AutoCompletion", "UnitConverter", "LibGenBookDownload"
+        "AutoCompletion", "UnitConverter", "LibGenBookDownload", "YouTubeSearch"
     ]
     
     ; Clear each hotkey
@@ -1387,6 +1388,36 @@ LibGenBookDownload() {
     
     ; Show confirmation tooltip
     ShowMouseTooltip("Searching LibGen for books...", 1000)
+}
+
+YouTubeSearch() {
+    ; Get selected text or prompt user for search term
+    searchTerm := ""
+    if (A_PriorHotkey = A_ThisHotkey && A_TimeSincePriorHotkey < 400)
+        return  ; Avoid accidental double-triggers
+    
+    ; Try to get selected text first
+    savedClip := ClipboardAll()  ; Save current clipboard
+    A_Clipboard := ""  ; Clear clipboard
+    Send "^c"  ; Copy selected text
+    if ClipWait(0.5) {  ; Wait for clipboard data
+        searchTerm := A_Clipboard
+    }
+    A_Clipboard := savedClip  ; Restore original clipboard
+    
+    ; If no text was selected, prompt user
+    if (searchTerm = "") {
+        searchTerm := InputBox("Enter search term for YouTube:", "YouTube Search").Value
+        if (searchTerm = "")  ; User cancelled
+            return
+    }
+    
+    ; Encode the search term and launch browser
+    searchTerm := UrlEncode(searchTerm)
+    Run "https://www.youtube.com/results?search_query=" searchTerm
+    
+    ; Show confirmation tooltip
+    ShowMouseTooltip("Searching YouTube...", 1000)
 }
 
 ; Function to open selected text in editor with language detection (legacy)

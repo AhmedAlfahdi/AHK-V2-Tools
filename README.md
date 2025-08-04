@@ -51,6 +51,7 @@ AHK-V2-Tools/
 | Alt + U | Unit Converter |
 | Alt + T | Run Selected Command (CMD/PowerShell) |
 | Alt + B | LibGen Book Download |
+| Alt + Y | YouTube Search |
 
 ## Plugins
 
@@ -75,6 +76,12 @@ AHK-V2-Tools/
 - Quick access to Library Genesis for book downloads
 - Select book title or author text and press Alt+B
 - Opens LibGen search page with selected text
+- Also works with manual input if no text is selected
+
+### YouTube Search
+- Quick YouTube search functionality
+- Select search term text and press Alt+Y
+- Opens YouTube search results page with selected text
 - Also works with manual input if no text is selected
 
 ## Settings Manager

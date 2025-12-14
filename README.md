@@ -3,6 +3,9 @@
 A collection of productivity tools and utilities built with AutoHotkey v2.
 
 <img width="880" height="658" alt="{D13D8608-F08F-4A30-8D4D-FFCD825F1299}" src="https://github.com/user-attachments/assets/988325c8-1824-43bb-bd22-ca4d436aa367" />
+---
+<img width="880" height="658" alt="{57EE4958-FD47-4B1B-A6EE-9F35D8672AA2}" src="https://github.com/user-attachments/assets/e1367496-a843-42c7-8428-a4e986adaac6" />
+
 
 ## Requirements
 
